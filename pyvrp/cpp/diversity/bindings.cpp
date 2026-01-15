@@ -1,7 +1,7 @@
+#include <pybind11/pybind11.h>
+
 #include "diversity.h"
 #include "diversity_docs.h"
-
-#include <pybind11/pybind11.h>
 
 namespace py = pybind11;
 

@@ -1,8 +1,8 @@
+#include <pybind11/pybind11.h>
+
 #include "crossover_docs.h"
 #include "ordered_crossover.h"
 #include "selective_route_exchange.h"
-
-#include <pybind11/pybind11.h>
 
 namespace py = pybind11;
 

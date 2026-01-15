@@ -1,9 +1,9 @@
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
 #include "greedy_repair.h"
 #include "nearest_route_insert.h"
 #include "repair_docs.h"
-
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 
 namespace py = pybind11;
 

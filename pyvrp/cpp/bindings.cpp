@@ -1,3 +1,9 @@
+#include <pybind11/functional.h>
+#include <pybind11/numpy.h>
+#include <pybind11/operators.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
 #include "bindings.h"
 #include "CostEvaluator.h"
 #include "DurationSegment.h"
@@ -11,12 +17,6 @@
 #include "SubPopulation.h"
 #include "Trip.h"
 #include "pyvrp_docs.h"
-
-#include <pybind11/functional.h>
-#include <pybind11/numpy.h>
-#include <pybind11/operators.h>
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 
 #include <memory>
 #include <sstream>

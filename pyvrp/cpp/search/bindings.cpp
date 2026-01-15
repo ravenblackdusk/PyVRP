@@ -1,3 +1,8 @@
+#include <pybind11/pybind11.h>
+#include <pybind11/stl.h>
+
+#include <sstream>
+
 #include "bindings.h"
 #include "Exchange.h"
 #include "LocalSearch.h"
@@ -8,11 +13,6 @@
 #include "SwapTails.h"
 #include "primitives.h"
 #include "search_docs.h"
-
-#include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
-
-#include <sstream>
 
 namespace py = pybind11;
 

@@ -142,6 +142,7 @@ def solve(
     collect_stats: bool = True,
     display: bool = False,
     params: SolveParams = SolveParams(),
+    initial_solution: Solution | None = None,
 ) -> Result:
     """
     Solves the given problem data instance.
@@ -163,6 +164,9 @@ def solve(
         ``collect_stats`` is also set, which it is by default.
     params
         Solver parameters to use. If not provided, a default will be used.
+    initial_solution
+        Optional solution to use as a warm start. The solver constructs a
+        (possibly poor) initial solution if this argument is not provided.
 
     Returns
     -------
@@ -184,13 +188,16 @@ def solve(
 
     pm = PenaltyManager.init_from(data, params.penalty)
     pop = Population(bpd, params.population)
-    init = [
-        Solution.make_random(data, rng)
-        for _ in range(params.population.min_pop_size)
-    ]
 
     # We use SREX when the instance is a proper VRP; else OX for TSP.
     crossover = srex if data.num_vehicles > 1 else ox
+    if initial_solution is not None:
+        init = [initial_solution]
+    else:
+        init = [
+            Solution.make_random(data, rng)
+            for _ in range(params.population.min_pop_size)
+        ]
 
     gen_args = (data, pm, rng, pop, ls, crossover, init, params.genetic)
     algo = GeneticAlgorithm(*gen_args)  # type: ignore

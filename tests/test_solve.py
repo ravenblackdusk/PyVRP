@@ -13,7 +13,7 @@ from pyvrp.search import (
 )
 from pyvrp.solve import SolveParams, solve
 from pyvrp.stop import MaxIterations
-from tests.helpers import DATA_DIR
+from tests.helpers import DATA_DIR, read_solution
 
 
 def test_default_values():
@@ -74,6 +74,15 @@ def test_solve_same_seed(ok_small):
     assert_equal(res1.stats.feas_stats, res2.stats.feas_stats)
     assert_equal(res1.stats.infeas_stats, res2.stats.infeas_stats)
 
+def test_solve_initial_solution(rc208):
+    """
+    Tests that solving an instance with an initial solution works as
+    expected by checking that the best solution found is the same as the
+    initial solution.
+    """
+    bks = read_solution("data/RC208.sol", rc208)
+    res = solve(rc208, stop=MaxIterations(0), initial_solution=bks)
+    assert_equal(res.best, bks)
 
 def test_solve_custom_params(ok_small):
     """
