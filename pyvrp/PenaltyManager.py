@@ -120,6 +120,27 @@ class PenaltyParams:
         if self.max_penalty < self.min_penalty:
             raise ValueError("Expected max_penalty >= min_penalty.")
 
+    def midpoint_penalties(
+        self, data: ProblemData
+    ) -> tuple[list[float], float, float]:
+        """
+        Returns initial penalty values at the midpoint between ``min_penalty``
+        and ``max_penalty``.
+
+        Parameters
+        ----------
+        data
+            The problem data instance.
+
+        Returns
+        -------
+        tuple[list[float], float, float]
+            The initial penalty values for units of load (idx 0), duration (1),
+            and distance (2) violations.
+        """
+        midpoint = self.min_penalty + (self.max_penalty - self.min_penalty) / 2
+        return ([midpoint] * data.num_load_dimensions, midpoint, midpoint)
+
 
 class PenaltyManager:
     """

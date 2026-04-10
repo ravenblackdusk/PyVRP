@@ -186,7 +186,8 @@ def solve(
         if route_op.supports(data):
             ls.add_route_operator(route_op(data))
 
-    pm = PenaltyManager.init_from(data, params.penalty)
+    penalties = params.penalty.midpoint_penalties(data)
+    pm = PenaltyManager(penalties, params.penalty)
     pop = Population(bpd, params.population)
 
     # We use SREX when the instance is a proper VRP; else OX for TSP.
