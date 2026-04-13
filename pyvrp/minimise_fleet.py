@@ -1,6 +1,6 @@
 import numpy as np
 
-from pyvrp._pyvrp import ProblemData, VehicleType
+from pyvrp._pyvrp import ClientRequired, ProblemData, VehicleType
 from pyvrp.solve import SolveParams, solve
 from pyvrp.stop import FirstFeasible, MultipleCriteria, StoppingCriterion
 
@@ -52,7 +52,7 @@ def minimise_fleet(
         msg = "Fleet minimisation does not understand multiple vehicle types."
         raise ValueError(msg)
 
-    if any(not client.required for client in data.clients()):
+    if any(client.required != ClientRequired.HARD for client in data.clients()):
         msg = "Fleet minimisation does not work with optional clients."
         raise ValueError(msg)
 

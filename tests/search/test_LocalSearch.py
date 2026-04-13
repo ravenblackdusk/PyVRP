@@ -4,6 +4,7 @@ from numpy.testing import assert_, assert_equal, assert_raises
 
 from pyvrp import (
     Client,
+    ClientRequired,
     CostEvaluator,
     Depot,
     ProblemData,
@@ -411,10 +412,10 @@ def test_local_search_does_not_remove_required_clients():
         clients=[
             # This client cannot be removed, even though it causes significant
             # load violations.
-            Client(x=1, y=1, delivery=[100], required=True),
+            Client(x=1, y=1, delivery=[100], required=ClientRequired.HARD),
             # This client can and should be removed, because the prize is not
             # worth the detour.
-            Client(x=2, y=2, delivery=[0], prize=0, required=False),
+            Client(x=2, y=2, delivery=[0], prize=0, required=ClientRequired.NO),
         ],
         depots=[Depot(x=0, y=0)],
         vehicle_types=[VehicleType(1, capacity=[50])],
@@ -453,8 +454,8 @@ def test_replacing_optional_client():
     ]
     data = ProblemData(
         clients=[
-            Client(0, 0, tw_early=0, tw_late=1, prize=1, required=False),
-            Client(0, 0, tw_early=0, tw_late=1, prize=5, required=False),
+            Client(0, 0, tw_early=0, tw_late=1, prize=1, required=ClientRequired.NO),
+            Client(0, 0, tw_early=0, tw_late=1, prize=5, required=ClientRequired.NO),
         ],
         depots=[Depot(0, 0)],
         vehicle_types=[VehicleType()],

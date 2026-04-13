@@ -1,6 +1,12 @@
+from enum import Enum
 from typing import Callable, Iterator, overload
 
 import numpy as np
+
+class ClientRequired(Enum):
+    HARD = 0
+    SOFT = 1
+    NO = 2
 
 class CostEvaluator:
     def __init__(
@@ -43,7 +49,7 @@ class Client:
     tw_late: int
     release_time: int
     prize: int
-    required: bool
+    required: ClientRequired
     group: int | None
     name: str
     def __init__(
@@ -57,7 +63,7 @@ class Client:
         tw_late: int = ...,
         release_time: int = 0,
         prize: int = 0,
-        required: bool = True,
+        required: ClientRequired = ClientRequired.HARD,
         group: int | None = None,
         *,
         name: str = "",
@@ -67,13 +73,13 @@ class Client:
     def __setstate__(self, state: tuple, /) -> None: ...
 
 class ClientGroup:
-    required: bool
+    required: ClientRequired
     mutually_exclusive: bool
     name: str
     def __init__(
         self,
         clients: list[int] = [],
-        required: bool = True,
+        required: ClientRequired = ClientRequired.HARD,
         *,
         name: str = "",
     ) -> None: ...

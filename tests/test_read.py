@@ -10,7 +10,7 @@ from numpy.testing import (
     assert_warns,
 )
 
-from pyvrp import CostEvaluator
+from pyvrp import ClientRequired, CostEvaluator
 from pyvrp.constants import MAX_VALUE
 from pyvrp.exceptions import ScalingWarning
 from tests.helpers import read, read_solution
@@ -164,7 +164,7 @@ def test_reading_vrplib_instance():
         assert_equal(data.location(loc).tw_late, np.iinfo(np.int64).max)
         assert_equal(data.location(loc).release_time, 0)
         assert_equal(data.location(loc).prize, 0)
-        assert_equal(data.location(loc).required, True)
+        assert_equal(data.location(loc).required, ClientRequired.HARD)
 
 
 def test_warns_about_scaling_issues():
@@ -427,7 +427,7 @@ def test_reading_mutually_exclusive_group():
 
     for client in data.group(0):
         client_data = data.location(client)  # type: ignore
-        assert_equal(client_data.required, False)
+        assert_equal(client_data.required, ClientRequired.NO)
         assert_equal(client_data.group, 0)
 
 

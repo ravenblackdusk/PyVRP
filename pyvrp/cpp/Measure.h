@@ -29,10 +29,12 @@ template <MeasureType Type, NumberType Value> class Measure;
 
 // Type aliases. These are used throughout the program.
 using Coordinate = Measure<MeasureType::COORD, double>;
-using Cost = Measure<MeasureType::COST, int64_t>;
 using Distance = Measure<MeasureType::DIST, int64_t>;
 using Duration = Measure<MeasureType::DURATION, int64_t>;
 using Load = Measure<MeasureType::LOAD, int64_t>;
+
+// Forward declaration of the standalone Cost class.
+class Cost;
 
 //
 //                 EVERYTHING BELOW IS AN IMPLEMENTATION DETAIL
@@ -220,6 +222,156 @@ Measure<Type, Value> operator/(Measure<Type, Value> const lhs,
 {
     return lhs.get() / rhs.get();
 }
+/**
+ * Standalone Cost class with compound {int32_t, int64_t} structure.
+ *
+ * The first component tracks the number of missing soft-required (SOFT)
+ * clients. The second component tracks the monetary cost. Comparison is
+ * lexicographic: missingSoftRequired is compared first, then cost. Arithmetic
+ * is component-wise.
+ *
+ * Construction from arithmetic types creates {0, value} for backward
+ * compatibility with existing code that treats Cost as a simple scalar.
+ */
+class Cost
+{
+    int32_t missingSoftRequired_ = 0;
+    int64_t cost_ = 0;
+
+public:
+    Cost() = default;
+
+    // Construct from any arithmetic type: {0, value}.
+    template <NumberType T>
+    Cost(T const value) : cost_(static_cast<int64_t>(value))
+    {
+    }
+
+    // Construct with both components.
+    Cost(int32_t missingSoftRequired, int64_t cost)
+        : missingSoftRequired_(missingSoftRequired), cost_(cost)
+    {
+    }
+
+    // Explicit conversions to arithmetic types (returns cost component).
+    template <NumberType T> explicit operator T() const
+    {
+        return static_cast<T>(cost_);
+    }
+
+    // Retrieves the monetary cost component.
+    [[nodiscard]] int64_t get() const { return cost_; }
+
+    // Retrieves the missing soft-required component.
+    [[nodiscard]] int32_t missingSoftRequired() const
+    {
+        return missingSoftRequired_;
+    }
+
+    // In-place operators (component-wise).
+    Cost &operator+=(Cost const rhs);
+    Cost &operator-=(Cost const rhs);
+    Cost &operator*=(Cost const rhs);
+    Cost &operator/=(Cost const rhs);
+
+    // Comparison operators (lexicographic).
+    [[nodiscard]] bool operator==(Cost const other) const;
+    [[nodiscard]] std::strong_ordering operator<=>(Cost const other) const;
+};
+
+// In-place operators.
+inline Cost &Cost::operator+=(Cost const rhs)
+{
+    [[maybe_unused]] int64_t res = 0;
+    assert(!__builtin_add_overflow(cost_, rhs.cost_, &res));
+
+    missingSoftRequired_ += rhs.missingSoftRequired_;
+    cost_ += rhs.cost_;
+    return *this;
+}
+
+inline Cost &Cost::operator-=(Cost const rhs)
+{
+    [[maybe_unused]] int64_t res = 0;
+    assert(!__builtin_sub_overflow(cost_, rhs.cost_, &res));
+
+    missingSoftRequired_ -= rhs.missingSoftRequired_;
+    cost_ -= rhs.cost_;
+    return *this;
+}
+
+inline Cost &Cost::operator*=(Cost const rhs)
+{
+    [[maybe_unused]] int64_t res = 0;
+    assert(!__builtin_mul_overflow(cost_, rhs.cost_, &res));
+
+    missingSoftRequired_ *= rhs.missingSoftRequired_;
+    cost_ *= rhs.cost_;
+    return *this;
+}
+
+inline Cost &Cost::operator/=(Cost const rhs)
+{
+    missingSoftRequired_ /= rhs.missingSoftRequired_;
+    cost_ /= rhs.cost_;
+    return *this;
+}
+
+// Comparison operators.
+inline bool Cost::operator==(Cost const other) const
+{
+    return missingSoftRequired_ == other.missingSoftRequired_
+           && cost_ == other.cost_;
+}
+
+inline std::strong_ordering Cost::operator<=>(Cost const other) const
+{
+    if (auto cmp = missingSoftRequired_ <=> other.missingSoftRequired_;
+        cmp != 0)
+        return cmp;
+    return cost_ <=> other.cost_;
+}
+
+// Free-standing binary operators.
+inline Cost operator+(Cost const lhs, Cost const rhs)
+{
+    [[maybe_unused]] int64_t res = 0;
+    assert(!__builtin_add_overflow(lhs.get(), rhs.get(), &res));
+
+    return Cost(lhs.missingSoftRequired() + rhs.missingSoftRequired(),
+                lhs.get() + rhs.get());
+}
+
+inline Cost operator+(Cost const lhs) { return lhs; }
+
+inline Cost operator-(Cost const lhs, Cost const rhs)
+{
+    [[maybe_unused]] int64_t res = 0;
+    assert(!__builtin_sub_overflow(lhs.get(), rhs.get(), &res));
+
+    return Cost(lhs.missingSoftRequired() - rhs.missingSoftRequired(),
+                lhs.get() - rhs.get());
+}
+
+inline Cost operator-(Cost const lhs)
+{
+    return Cost(-lhs.missingSoftRequired(), -lhs.get());
+}
+
+inline Cost operator*(Cost const lhs, Cost const rhs)
+{
+    [[maybe_unused]] int64_t res = 0;
+    assert(!__builtin_mul_overflow(lhs.get(), rhs.get(), &res));
+
+    return Cost(lhs.missingSoftRequired() * rhs.missingSoftRequired(),
+                lhs.get() * rhs.get());
+}
+
+inline Cost operator/(Cost const lhs, Cost const rhs)
+{
+    return Cost(lhs.missingSoftRequired() / rhs.missingSoftRequired(),
+                lhs.get() / rhs.get());
+}
 }  // namespace pyvrp
 
 // For printing.
@@ -230,6 +382,11 @@ std::ostream &operator<<(std::ostream &out,
     return out << measure.get();
 }
 
+inline std::ostream &operator<<(std::ostream &out, pyvrp::Cost const cost)
+{
+    return out << cost.get();
+}
+
 // Specialisations for hashing and numerical limits.
 
 template <pyvrp::MeasureType Type, pyvrp::NumberType Value>
@@ -238,6 +395,16 @@ struct std::hash<pyvrp::Measure<Type, Value>>
     size_t operator()(pyvrp::Measure<Type, Value> const measure) const
     {
         return std::hash<Value>()(measure.get());
+    }
+};
+
+template <> struct std::hash<pyvrp::Cost>
+{
+    size_t operator()(pyvrp::Cost const cost) const
+    {
+        auto h1 = std::hash<int32_t>()(cost.missingSoftRequired());
+        auto h2 = std::hash<int64_t>()(cost.get());
+        return h1 ^ (h2 * 2654435761ULL);
     }
 };
 
@@ -253,6 +420,22 @@ public:
     static pyvrp::Measure<Type, Value> min()
     {
         return std::numeric_limits<Value>::min();
+    }
+};
+
+template <> class std::numeric_limits<pyvrp::Cost>
+{
+public:
+    static pyvrp::Cost max()
+    {
+        return pyvrp::Cost(std::numeric_limits<int32_t>::max(),
+                           std::numeric_limits<int64_t>::max());
+    }
+
+    static pyvrp::Cost min()
+    {
+        return pyvrp::Cost(std::numeric_limits<int32_t>::min(),
+                           std::numeric_limits<int64_t>::min());
     }
 };
 

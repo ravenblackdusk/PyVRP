@@ -11,6 +11,7 @@ import vrplib
 from pyvrp._pyvrp import (
     Client,
     ClientGroup,
+    ClientRequired,
     Depot,
     ProblemData,
     Route,
@@ -413,7 +414,7 @@ class _ProblemDataBuilder:
                 tw_late=time_windows[idx][1],
                 release_time=release_times[idx],
                 prize=prizes[idx],
-                required=required[idx] and idx2group[idx] is None,
+                required=ClientRequired.HARD if required[idx] and idx2group[idx] is None else ClientRequired.NO,
                 group=idx2group[idx],
             )
             for idx in range(self.parser.num_depots, num_locs)

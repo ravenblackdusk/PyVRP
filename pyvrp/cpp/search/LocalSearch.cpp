@@ -267,13 +267,14 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
 {
     ProblemData::Client const &uData = data.location(U->client());
 
-    if (uData.required && !U->route())  // then we must insert U
-        insert(U, costEvaluator, uData.required);
+    if (uData.required == pyvrp::ClientRequired::HARD && !U->route())
+        insert(U, costEvaluator, true);  // force insert required clients
 
     // Required clients are not optional, and have just been inserted above
     // if not already in the solution. Groups have their own operator and are
-    // not processed here.
-    if (uData.required || uData.group)
+    // not processed here. SOFT clients follow the optional path below;
+    // the compound Cost type ensures they are always preferred.
+    if (uData.required == pyvrp::ClientRequired::HARD || uData.group)
         return;
 
     if (removeCost(U, data, costEvaluator) < 0)  // remove if improving
@@ -305,7 +306,7 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
         // We prefer inserting over replacing, but if V is not required, not in
         // a group, and replacing V with U is improving, we also do that now.
         ProblemData::Client const &vData = data.location(V->client());
-        if (!vData.required && !vData.group
+        if (vData.required != pyvrp::ClientRequired::HARD && !vData.group
             && inplaceCost(U, V, data, costEvaluator) < 0)
         {
             auto const idx = V->idx();
@@ -334,7 +335,7 @@ void LocalSearch::applyGroupMoves(Route::Node *U,
 
     if (inSol.empty())
     {
-        insert(U, costEvaluator, group.required);
+        insert(U, costEvaluator, group.required == pyvrp::ClientRequired::HARD);
         return;
     }
 

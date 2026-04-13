@@ -224,7 +224,7 @@ Route::Route(ProblemData const &data, Trips trips, size_t vehType)
         centroid_.second += (y.get() * trip.size()) / numClients;
     }
 
-    distanceCost_ = vehData.unitDistanceCost * static_cast<Cost>(distance_);
+    distanceCost_ = vehData.unitDistanceCost * Cost(distance_.get());
     excessDistance_ = std::max<Distance>(distance_ - vehData.maxDistance, 0);
 
     for (size_t idx = 0; idx != trips_.size(); ++idx)  // load statistics
@@ -283,8 +283,8 @@ Route::Route(ProblemData const &data, Trips trips, size_t vehType)
 
     duration_ = ds.duration();
     overtime_ = std::max<Duration>(duration_ - vehData.shiftDuration, 0);
-    durationCost_ = vehData.unitDurationCost * static_cast<Cost>(duration_)
-                    + vehData.unitOvertimeCost * static_cast<Cost>(overtime_);
+    durationCost_ = vehData.unitDurationCost * Cost(duration_.get())
+                    + vehData.unitOvertimeCost * Cost(overtime_.get());
     startTime_ = ds.startEarly();
     slack_ = ds.slack();
     timeWarp_ = ds.timeWarp(vehData.maxDuration);

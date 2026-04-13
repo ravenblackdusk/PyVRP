@@ -7,7 +7,7 @@ from numpy.testing import (
     assert_warns,
 )
 
-from pyvrp import Client, ClientGroup, Depot, Model, Profile, VehicleType
+from pyvrp import Client, ClientGroup, ClientRequired, Depot, Model, Profile, VehicleType
 from pyvrp.constants import MAX_VALUE
 from pyvrp.exceptions import ScalingWarning
 from pyvrp.stop import MaxIterations
@@ -93,7 +93,7 @@ def test_add_client_attributes():
         tw_late=6,
         release_time=0,
         prize=8,
-        required=False,
+        required=ClientRequired.NO,
     )
 
     assert_equal(client.x, 1)
@@ -105,7 +105,7 @@ def test_add_client_attributes():
     assert_equal(client.tw_late, 6)
     assert_equal(client.release_time, 0)
     assert_equal(client.prize, 8)
-    assert_(not client.required)
+    assert_equal(client.required, ClientRequired.NO)
 
 
 def test_add_client_with_multidimensional_load():
@@ -677,8 +677,8 @@ def test_from_data_client_group(ok_small):
     correctly sets up the client groups in the model.
     """
     clients = ok_small.clients()
-    clients[0] = Client(1, 1, delivery=[1], required=False, group=0)
-    clients[1] = Client(1, 1, delivery=[1], required=False, group=0)
+    clients[0] = Client(1, 1, delivery=[1], required=ClientRequired.NO, group=0)
+    clients[1] = Client(1, 1, delivery=[1], required=ClientRequired.NO, group=0)
 
     group = ClientGroup([1, 2])
 
@@ -693,7 +693,7 @@ def test_from_data_client_group(ok_small):
 
     # Test that that group actually contains the clients.
     group = model.groups[0]
-    assert_(group.required)
+    assert_equal(group.required, ClientRequired.HARD)
     assert_equal(len(group), 2)
     assert_equal(group.clients, [1, 2])
 
@@ -708,8 +708,8 @@ def test_to_data_client_group():
     m.add_vehicle_type()
 
     group = m.add_client_group()
-    m.add_client(1, 1, required=False, group=group)
-    m.add_client(2, 2, required=False, group=group)
+    m.add_client(1, 1, required=ClientRequired.NO, group=group)
+    m.add_client(2, 2, required=ClientRequired.NO, group=group)
 
     # Generate the data instance. There should be a single client group, and
     # the first two clients should be members of that group.
@@ -731,7 +731,7 @@ def test_raises_mutually_exclusive_client_group_required_client():
     assert_(group.mutually_exclusive)
 
     with assert_raises(ValueError):
-        m.add_client(1, 1, required=True, group=group)
+        m.add_client(1, 1, required=ClientRequired.HARD, group=group)
 
 
 def test_client_group_membership_works_with_intermediate_changes():
@@ -746,9 +746,9 @@ def test_client_group_membership_works_with_intermediate_changes():
 
     # Add three clients to the model, with (for now) indices 1, 2, 3.
     group = m.add_client_group()
-    m.add_client(1, 1, required=False, group=group)
-    m.add_client(1, 1, required=False, group=group)
-    m.add_client(1, 1, required=False, group=group)
+    m.add_client(1, 1, required=ClientRequired.NO, group=group)
+    m.add_client(1, 1, required=ClientRequired.NO, group=group)
+    m.add_client(1, 1, required=ClientRequired.NO, group=group)
 
     m.data()
     assert_equal(len(group), 3)
@@ -757,7 +757,7 @@ def test_client_group_membership_works_with_intermediate_changes():
     # Add another depot and another client. The clients now have indices 2, 3,
     # 4, and 5.
     m.add_depot(1, 2)
-    m.add_client(1, 1, required=False, group=group)
+    m.add_client(1, 1, required=ClientRequired.NO, group=group)
 
     m.data()
     assert_equal(len(group), 4)
@@ -982,10 +982,10 @@ def test_bug_client_group_indices():
     group1 = m.add_client_group()
     group2 = m.add_client_group()
 
-    client1 = m.add_client(x=0, y=0, required=False, group=group2)
+    client1 = m.add_client(x=0, y=0, required=ClientRequired.NO, group=group2)
     assert_equal(client1.group, 1)
 
-    client2 = m.add_client(x=0, y=0, required=False, group=group1)
+    client2 = m.add_client(x=0, y=0, required=ClientRequired.NO, group=group1)
     assert_equal(client2.group, 0)
 
     assert_equal(len(group1), 1)

@@ -40,6 +40,11 @@ using pyvrp::Trip;
 
 PYBIND11_MODULE(_pyvrp, m)
 {
+    py::enum_<pyvrp::ClientRequired>(m, "ClientRequired")
+        .value("HARD", pyvrp::ClientRequired::HARD)
+        .value("SOFT", pyvrp::ClientRequired::SOFT)
+        .value("NO", pyvrp::ClientRequired::NO);
+
     py::class_<DynamicBitset>(m, "DynamicBitset", DOC(pyvrp, DynamicBitset))
         .def(py::init<size_t>(), py::arg("num_bits"))
         .def(py::self == py::self, py::arg("other"))  // this is __eq__
@@ -75,7 +80,7 @@ PYBIND11_MODULE(_pyvrp, m)
                       pyvrp::Duration,
                       pyvrp::Duration,
                       pyvrp::Cost,
-                      bool,
+                      pyvrp::ClientRequired,
                       std::optional<size_t>,
                       char const *>(),
              py::arg("x"),
@@ -87,7 +92,7 @@ PYBIND11_MODULE(_pyvrp, m)
              py::arg("tw_late") = std::numeric_limits<pyvrp::Duration>::max(),
              py::arg("release_time") = 0,
              py::arg("prize") = 0,
-             py::arg("required") = true,
+             py::arg("required") = pyvrp::ClientRequired::HARD,
              py::arg("group") = py::none(),
              py::kw_only(),
              py::arg("name") = "")
@@ -136,7 +141,7 @@ PYBIND11_MODULE(_pyvrp, m)
                     t[6].cast<pyvrp::Duration>(),           // tw late
                     t[7].cast<pyvrp::Duration>(),           // release time
                     t[8].cast<pyvrp::Cost>(),               // prize
-                    t[9].cast<bool>(),                      // required
+                    t[9].cast<pyvrp::ClientRequired>(),     // required
                     t[10].cast<std::optional<size_t>>(),    // group
                     t[11].cast<std::string>());             // name
 
@@ -189,9 +194,9 @@ PYBIND11_MODULE(_pyvrp, m)
 
     py::class_<ProblemData::ClientGroup>(
         m, "ClientGroup", DOC(pyvrp, ProblemData, ClientGroup))
-        .def(py::init<std::vector<size_t>, bool, char const *>(),
+        .def(py::init<std::vector<size_t>, pyvrp::ClientRequired, char const *>(),
              py::arg("clients") = py::list(),
-             py::arg("required") = true,
+             py::arg("required") = pyvrp::ClientRequired::HARD,
              py::kw_only(),
              py::arg("name") = "")
         .def("add_client",
@@ -215,9 +220,9 @@ PYBIND11_MODULE(_pyvrp, m)
             },
             [](py::tuple t) {  // __setstate__
                 ProblemData::ClientGroup group(
-                    t[0].cast<std::vector<size_t>>(),  // clients
-                    t[1].cast<bool>(),                 // required
-                    t[2].cast<std::string>());         // name
+                    t[0].cast<std::vector<size_t>>(),       // clients
+                    t[1].cast<pyvrp::ClientRequired>(),     // required
+                    t[2].cast<std::string>());              // name
 
                 return group;
             }))

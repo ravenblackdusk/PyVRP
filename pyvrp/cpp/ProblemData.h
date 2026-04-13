@@ -14,6 +14,24 @@
 namespace pyvrp
 {
 /**
+ * ClientRequired
+ *
+ * Enum that specifies how a client or client group should be treated by the
+ * solver.
+ *
+ * - ``HARD``: Must be visited in any feasible solution.
+ * - ``SOFT``: Should be visited whenever feasible (soft-required). The
+ *   solver prioritises visiting these clients over minimising cost.
+ * - ``NO``: May be visited if cost-effective (prize-collecting).
+ */
+enum class ClientRequired : uint8_t
+{
+    HARD = 0,
+    SOFT = 1,
+    NO = 2,
+};
+
+/**
  * ProblemData(
  *     clients: list[Client],
  *     depots: list[Depot],
@@ -77,7 +95,7 @@ public:
      *    tw_late: int = np.iinfo(np.int64).max,
      *    release_time: int = 0,
      *    prize: int = 0,
-     *    required: bool = True,
+     *    required: ClientRequired = ClientRequired.HARD,
      *    group: int | None = None,
      *    *,
      *    name: str = "",
@@ -120,9 +138,9 @@ public:
      *     is not required, the prize needs to be sufficiently large to offset
      *     any travel cost before this client will be visited in a solution.
      * required
-     *     Whether this client must be part of a feasible solution. Default
-     *     True. Make sure to also update the prize value when setting this
-     *     argument to False.
+     *     How this client should be treated: ``HARD`` (must visit),
+     *     ``SOFT`` (visit if feasible), or ``NO`` (visit if
+     *     cost-effective). Default ``HARD``.
      * group
      *     Indicates membership of the given client group, if any. By default
      *     clients are not part of any groups.
@@ -152,7 +170,7 @@ public:
      * prize
      *     Prize collected by visiting this client.
      * required
-     *     Whether visiting this client is required.
+     *     How this client should be treated by the solver.
      * group
      *     Indicates membership of the given client group, if any.
      * name
@@ -168,8 +186,8 @@ public:
         std::vector<Load> const delivery;
         std::vector<Load> const pickup;
         Duration const releaseTime;  // Earliest possible time to leave depot
-        Cost const prize;            // Prize for visiting this client
-        bool const required;         // Must client be in solution?
+        Cost const prize;                    // Prize for visiting this client
+        ClientRequired const required;       // How to treat this client
         std::optional<size_t> const group;  // Optional client group membership
         char const *name;                   // Client name (for reference)
 
@@ -182,7 +200,7 @@ public:
                Duration twLate = std::numeric_limits<Duration>::max(),
                Duration releaseTime = 0,
                Cost prize = 0,
-               bool required = true,
+               ClientRequired required = ClientRequired::HARD,
                std::optional<size_t> group = std::nullopt,
                std::string name = "");
 
@@ -200,7 +218,7 @@ public:
     /**
      * ClientGroup(
      *    clients: list[int] = [],
-     *    required: bool = True,
+     *    required: ClientRequired = ClientRequired.HARD,
      *    *,
      *    name: str = "",
      * )
@@ -217,7 +235,7 @@ public:
      * clients
      *     The clients in the group.
      * required
-     *     Whether visiting this client group is required.
+     *     How this client group should be treated by the solver.
      * name
      *    Free-form name field for this client group. Default empty.
      *
@@ -226,7 +244,7 @@ public:
      * clients
      *     The clients in the group.
      * required
-     *     Whether visiting this client group is required.
+     *     How this client group should be treated by the solver.
      * mutually_exclusive
      *     When ``True``, exactly one of the clients in this group must be
      *     visited if the group is required, and at most one if the group is
@@ -245,12 +263,12 @@ public:
         std::vector<size_t> clients_;  // clients in this group
 
     public:
-        bool const required;                  // is visiting the group required?
+        ClientRequired const required;         // how to treat this group
         bool const mutuallyExclusive = true;  // at most one visit in group?
         char const *name;                     // Group name (for reference)
 
         explicit ClientGroup(std::vector<size_t> clients = {},
-                             bool required = true,
+                             ClientRequired required = ClientRequired::HARD,
                              std::string name = "");
 
         bool operator==(ClientGroup const &other) const;
