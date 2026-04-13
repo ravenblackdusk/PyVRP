@@ -280,8 +280,9 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
 {
     ProblemData::Client const &uData = data.location(U->client());
 
-    if (uData.required && !U->route())  // then we must insert U
+    if (uData.required == pyvrp::ClientRequired::HARD && !U->route())
     {
+        // Required clients must be in the solution, so we force insert them.
         solution_.insert(U, searchSpace_, costEvaluator, true);
         update(U->route(), U->route());
         searchSpace_.markPromising(U);
@@ -289,8 +290,9 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
 
     // Required clients are not optional, and have just been inserted above
     // if not already in the solution. Groups have their own operator and are
-    // not processed here.
-    if (uData.required || uData.group)
+    // not processed here. SOFT clients follow the optional path below;
+    // the compound Cost type ensures they are always preferred.
+    if (uData.required == pyvrp::ClientRequired::HARD || uData.group)
         return;
 
     if (removeCost(U, data, costEvaluator) < 0)  // remove if improving
@@ -324,7 +326,7 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
         // We prefer inserting over replacing, but if V is not required, not in
         // a group, and replacing V with U is improving, we also do that now.
         ProblemData::Client const &vData = data.location(V->client());
-        if (!vData.required && !vData.group
+        if (vData.required != pyvrp::ClientRequired::HARD && !vData.group
             && inplaceCost(U, V, data, costEvaluator) < 0)
         {
             searchSpace_.markPromising(V);
@@ -366,12 +368,13 @@ void LocalSearch::applyGroupMoves(Route::Node *U,
 
     if (inSol.empty())
     {
-        auto const required = group.required;
+        auto const required = group.required == pyvrp::ClientRequired::HARD;
         if (solution_.insert(U, searchSpace_, costEvaluator, required))
         {
             update(U->route(), U->route());
             searchSpace_.markPromising(U);
         }
+
 
         return;
     }
@@ -427,7 +430,7 @@ void LocalSearch::markRequiredMissingAsPromising()
             continue;                         // nothing to do
 
         ProblemData::Client const &clientData = data.location(client);
-        if (clientData.required)
+        if (clientData.required != pyvrp::ClientRequired::NO)
         {
             searchSpace_.markPromising(client);
             continue;
@@ -436,7 +439,8 @@ void LocalSearch::markRequiredMissingAsPromising()
         if (clientData.group)  // mark the group's first client as promising so
         {                      // the group at least gets inserted if needed
             auto const &group = data.group(clientData.group.value());
-            if (group.required && group.clients().front() == client)
+            if (group.required != pyvrp::ClientRequired::NO
+                && group.clients().front() == client)
             {
                 searchSpace_.markPromising(client);
                 continue;

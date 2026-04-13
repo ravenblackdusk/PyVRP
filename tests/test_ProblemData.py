@@ -5,7 +5,7 @@ import pytest
 from numpy.random import default_rng
 from numpy.testing import assert_, assert_allclose, assert_equal, assert_raises
 
-from pyvrp import Client, ClientGroup, Depot, ProblemData, VehicleType
+from pyvrp import Client, ClientGroup, ClientRequired, Depot, ProblemData, VehicleType
 
 _INT_MAX = np.iinfo(np.int64).max
 _MAX_SIZE = np.iinfo(np.uint64).max
@@ -27,16 +27,16 @@ _MAX_SIZE = np.iinfo(np.uint64).max
         "name",
     ),
     [
-        (1, 1, 1, 1, 1, 0, 1, 0, 0, True, None, "test name"),  # normal
-        (1, 1, 1, 0, 0, 0, 1, 0, 0, True, None, "1234"),  # zero duration
-        (1, 1, 0, 0, 1, 0, 1, 0, 0, True, None, "1,2,3,4"),  # zero delivery
-        (1, 1, 1, 0, 1, 0, 0, 0, 0, True, None, ""),  # zero time windows
-        (-1, -1, 1, 0, 1, 0, 1, 0, 0, True, None, ""),  # negative coordinates
-        (1, 1, 1, 0, 1, 0, 1, 1, 0, True, None, ""),  # positive release time
-        (0, 0, 1, 0, 1, 0, 1, 0, 1, True, None, ""),  # positive prize
-        (0, 0, 1, 0, 1, 0, 1, 0, 1, False, None, ""),  # not required
-        (0, 0, 1, 0, 1, 0, 1, 0, 1, False, 0, ""),  # group membership
-        (0.5, 8.2, 1, 1, 1, 0, 1, 0, 0, True, None, ""),  # float coordinates
+        (1, 1, 1, 1, 1, 0, 1, 0, 0, ClientRequired.HARD, None, "test name"),  # normal
+        (1, 1, 1, 0, 0, 0, 1, 0, 0, ClientRequired.HARD, None, "1234"),  # zero duration
+        (1, 1, 0, 0, 1, 0, 1, 0, 0, ClientRequired.HARD, None, "1,2,3,4"),  # zero delivery
+        (1, 1, 1, 0, 1, 0, 0, 0, 0, ClientRequired.HARD, None, ""),  # zero time windows
+        (-1, -1, 1, 0, 1, 0, 1, 0, 0, ClientRequired.HARD, None, ""),  # negative coordinates
+        (1, 1, 1, 0, 1, 0, 1, 1, 0, ClientRequired.HARD, None, ""),  # positive release time
+        (0, 0, 1, 0, 1, 0, 1, 0, 1, ClientRequired.HARD, None, ""),  # positive prize
+        (0, 0, 1, 0, 1, 0, 1, 0, 1, ClientRequired.NO, None, ""),  # not required
+        (0, 0, 1, 0, 1, 0, 1, 0, 1, ClientRequired.NO, 0, ""),  # group membership
+        (0.5, 8.2, 1, 1, 1, 0, 1, 0, 0, ClientRequired.HARD, None, ""),  # float coordinates
     ],
 )
 def test_client_constructor_initialises_data_fields_correctly(
@@ -49,7 +49,7 @@ def test_client_constructor_initialises_data_fields_correctly(
     tw_late: int,
     release_time: int,
     prize: int,
-    required: bool,
+    required: ClientRequired,
     group: int | None,
     name: str,
 ):
@@ -814,10 +814,10 @@ def test_client_group_attribute_access():
     """
     Tests that the ClientGroup's attributes are correctly set and accessible.
     """
-    group = ClientGroup(clients=[1, 2, 3], required=False, name="test")
+    group = ClientGroup(clients=[1, 2, 3], required=ClientRequired.NO, name="test")
 
     assert_equal(group.clients, [1, 2, 3])
-    assert_equal(group.required, False)
+    assert_equal(group.required, ClientRequired.NO)
     assert_equal(group.mutually_exclusive, True)
     assert_equal(group.name, "test")
     assert_equal(str(group), "test")
@@ -855,7 +855,7 @@ def test_raises_invalid_client_group_indices(
     """
     with assert_raises(IndexError):
         ProblemData(
-            clients=[Client(1, 1, required=False, group=index)],
+            clients=[Client(1, 1, required=ClientRequired.NO, group=index)],
             depots=[Depot(1, 1)],
             vehicle_types=[VehicleType()],
             distance_matrices=[np.zeros((2, 2))],
@@ -874,7 +874,7 @@ def test_raises_invalid_group_client_indices(groups: list[ClientGroup]):
     """
     with assert_raises(IndexError):
         ProblemData(
-            clients=[Client(1, 1, required=False, group=0)],
+            clients=[Client(1, 1, required=ClientRequired.NO, group=0)],
             depots=[Depot(1, 1)],
             vehicle_types=[VehicleType()],
             distance_matrices=[np.zeros((2, 2))],
@@ -894,8 +894,8 @@ def test_raises_wrong_mutual_group_referencing():
             # The client references the first group, which does not contain the
             # client. That should raise.
             clients=[
-                Client(1, 1, required=False, group=0),
-                Client(2, 2, required=False, group=0),
+                Client(1, 1, required=ClientRequired.NO, group=0),
+                Client(2, 2, required=ClientRequired.NO, group=0),
             ],
             depots=[Depot(1, 1)],
             vehicle_types=[VehicleType()],
@@ -926,7 +926,7 @@ def test_raises_for_required_mutually_exclusive_group_membership():
         # required visit, as that defeats the entire point of a mutually
         # exclusive group.
         ProblemData(
-            clients=[Client(1, 1, required=True, group=0)],
+            clients=[Client(1, 1, required=ClientRequired.HARD, group=0)],
             depots=[Depot(1, 1)],
             vehicle_types=[VehicleType()],
             distance_matrices=[np.zeros((2, 2))],
@@ -959,7 +959,7 @@ def test_replacing_client_groups(ok_small):
     # Let's add the first client to a group, and define a new data instance
     # that has a mutually exclusive group.
     clients = ok_small.clients()
-    clients[0] = Client(1, 1, delivery=[1], required=False, group=0)
+    clients[0] = Client(1, 1, delivery=[1], required=ClientRequired.NO, group=0)
     data = ok_small.replace(clients=clients, groups=[ClientGroup([1])])
 
     # There should now be a single client group (at index 0) that has the first
@@ -1028,19 +1028,19 @@ def test_client_group_eq():
     """
     Tests the client group's equality operator.
     """
-    group1 = ClientGroup(clients=[1, 2], required=False)
-    group2 = ClientGroup(clients=[1, 2], required=True)
+    group1 = ClientGroup(clients=[1, 2], required=ClientRequired.NO)
+    group2 = ClientGroup(clients=[1, 2], required=ClientRequired.HARD)
     assert_(group1 != group2)
 
     # This group is equivalent to group1.
-    group3 = ClientGroup(clients=[1, 2], required=False)
+    group3 = ClientGroup(clients=[1, 2], required=ClientRequired.NO)
     assert_(group1 == group3)
 
     # And some things that are not client groups.
     assert_(group1 != "text")
     assert_(group1 != 7)
 
-    group4 = ClientGroup(clients=[1, 2], required=False, name="test")
+    group4 = ClientGroup(clients=[1, 2], required=ClientRequired.NO, name="test")
     assert_(group1 != group4)
 
 
@@ -1070,7 +1070,7 @@ def test_pickle_client_group():
     """
     Tests that client groups can be serialised and unserialised.
     """
-    before_pickle = ClientGroup(clients=[1, 2, 3], required=False, name="test")
+    before_pickle = ClientGroup(clients=[1, 2, 3], required=ClientRequired.NO, name="test")
     bytes = pickle.dumps(before_pickle)
     assert_equal(pickle.loads(bytes), before_pickle)
 

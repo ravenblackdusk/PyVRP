@@ -8,6 +8,7 @@ import numpy as np
 from pyvrp._pyvrp import (
     Client,
     ClientGroup,
+    ClientRequired,
     Depot,
     ProblemData,
     Solution,
@@ -216,7 +217,7 @@ class Model:
         tw_late: int = np.iinfo(np.int64).max,
         release_time: int = 0,
         prize: int = 0,
-        required: bool = True,
+        required: ClientRequired = ClientRequired.HARD,
         group: ClientGroup | None = None,
         *,
         name: str = "",
@@ -239,7 +240,7 @@ class Model:
         else:
             raise ValueError("The given group is not in this model instance.")
 
-        if required and group is not None and group.mutually_exclusive:
+        if required == ClientRequired.HARD and group is not None and group.mutually_exclusive:
             # Required clients cannot be part of a mutually exclusive client
             # group, since then there's nothing to decide about.
             raise ValueError("Required client in mutually exclusive group.")
@@ -267,7 +268,7 @@ class Model:
         return client
 
     def add_client_group(
-        self, required: bool = True, *, name: str = ""
+        self, required: ClientRequired = ClientRequired.HARD, *, name: str = "",
     ) -> ClientGroup:
         """
         Adds a new, possibly optional, client group to the model. Returns the

@@ -8,6 +8,7 @@ from numpy.testing import assert_, assert_allclose, assert_equal, assert_raises
 from pyvrp import (
     Client,
     ClientGroup,
+    ClientRequired,
     Depot,
     ProblemData,
     RandomNumberGenerator,
@@ -692,8 +693,8 @@ def test_eq_unassigned():
     dist = [[0, 1, 1], [1, 0, 1], [1, 1, 0]]
     data = ProblemData(
         clients=[
-            Client(x=0, y=1, required=False),
-            Client(x=1, y=0, required=False),
+            Client(x=0, y=1, required=ClientRequired.NO),
+            Client(x=1, y=0, required=ClientRequired.NO),
         ],
         depots=[Depot(x=0, y=0)],
         vehicle_types=[VehicleType(2)],
@@ -835,11 +836,11 @@ def test_solution_feasibility_with_mutually_exclusive_groups(
     # Clients 1 and 2 are part of a mutually exclusive group. Of these clients,
     # exactly one must be part of a feasible solution.
     clients = ok_small.clients()
-    clients[0] = Client(1, 1, delivery=[0], required=False, group=0)
-    clients[1] = Client(2, 2, delivery=[0], required=False, group=0)
+    clients[0] = Client(1, 1, delivery=[0], required=ClientRequired.NO, group=0)
+    clients[1] = Client(2, 2, delivery=[0], required=ClientRequired.NO, group=0)
 
-    group = ClientGroup([1, 2], required=True)
-    assert_(group.required)
+    group = ClientGroup([1, 2], required=ClientRequired.HARD)
+    assert_equal(group.required, ClientRequired.HARD)
     assert_(group.mutually_exclusive)
 
     data = ok_small.replace(clients=clients, groups=[group])
@@ -857,11 +858,11 @@ def test_optional_mutually_exclusive_group(ok_small):
     # Clients 1 and 2 are part of a mutually exclusive group. Of these clients,
     # at most one must be part of a feasible solution.
     clients = ok_small.clients()
-    clients[0] = Client(1, 1, delivery=[0], required=False, group=0)
-    clients[1] = Client(2, 2, delivery=[0], required=False, group=0)
+    clients[0] = Client(1, 1, delivery=[0], required=ClientRequired.NO, group=0)
+    clients[1] = Client(2, 2, delivery=[0], required=ClientRequired.NO, group=0)
 
-    group = ClientGroup([1, 2], required=False)
-    assert_(not group.required)
+    group = ClientGroup([1, 2], required=ClientRequired.NO)
+    assert_equal(group.required, ClientRequired.NO)
     assert_(group.mutually_exclusive)
 
     data = ok_small.replace(clients=clients, groups=[group])

@@ -1086,7 +1086,7 @@ std::pair<Cost, Distance> Route::Proposal<Segments...>::distance() const
         merge(merge, std::forward<decltype(args)>(args)...);
 
         auto const excess = std::max<Distance>(distance - maxDistance, 0);
-        auto const cost = unitDistanceCost * static_cast<Cost>(distance);
+        auto const cost = unitDistanceCost * Cost(distance.get());
         return std::make_pair(cost, excess);
     };
 
@@ -1155,8 +1155,8 @@ std::pair<Cost, Duration> Route::Proposal<Segments...>::duration() const
 
         auto const duration = ds.duration();
         auto const overtime = std::max<Duration>(duration - shiftDuration, 0);
-        auto const cost = unitDurationCost * static_cast<Cost>(duration)
-                          + unitOvertimeCost * static_cast<Cost>(overtime);
+        auto const cost = unitDurationCost * Cost(duration.get())
+                          + unitOvertimeCost * Cost(overtime.get());
         auto const timeWarp = ds.timeWarp(maxDuration);
         return std::make_pair(cost, timeWarp);
     };
