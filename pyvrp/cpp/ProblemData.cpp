@@ -5,6 +5,7 @@
 #include <numeric>
 #include <stdexcept>
 
+using pyvrp::ClientRequired;
 using pyvrp::Distance;
 using pyvrp::Duration;
 using pyvrp::Load;
@@ -62,7 +63,7 @@ ProblemData::Client::Client(Coordinate x,
                             Duration twLate,
                             Duration releaseTime,
                             Cost prize,
-                            bool required,
+                            ClientRequired required,
                             std::optional<size_t> group,
                             std::string name)
     : x(x),
@@ -73,7 +74,9 @@ ProblemData::Client::Client(Coordinate x,
       delivery(pad(delivery, pickup)),
       pickup(pad(pickup, delivery)),
       releaseTime(releaseTime),
-      prize(prize),
+      // For SOFT clients, embed a soft-required component in the prize
+      // so that delta cost calculations automatically prefer visiting them.
+      prize(required == ClientRequired::SOFT ? Cost(1, prize.get()) : prize),
       required(required),
       group(group),
       name(duplicate(name.data()))
@@ -101,7 +104,7 @@ ProblemData::Client::Client(Coordinate x,
     if (releaseTime < 0)
         throw std::invalid_argument("release_time must be >= 0.");
 
-    if (prize < 0)
+    if (prize.get() < 0)
         throw std::invalid_argument("prize must be >= 0.");
 }
 
@@ -159,7 +162,7 @@ bool ProblemData::Client::operator==(Client const &other) const
 }
 
 ProblemData::ClientGroup::ClientGroup(std::vector<size_t> clients,
-                                      bool required,
+                                      ClientRequired required,
                                       std::string name)
     : required(required), name(duplicate(name.data()))
 {
@@ -598,7 +601,7 @@ void ProblemData::validate() const
             throw std::invalid_argument(msg);
         }
 
-        if (client.required && group.mutuallyExclusive)
+        if (client.required == ClientRequired::HARD && group.mutuallyExclusive)
         {
             auto const *msg = "Required client in mutually exclusive group.";
             throw std::invalid_argument(msg);

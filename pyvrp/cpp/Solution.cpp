@@ -172,7 +172,7 @@ Solution::Solution(ProblemData const &data, RandomNumberGenerator &rng)
     for (size_t idx = data.numDepots(); idx != data.numLocations(); ++idx)
     {
         ProblemData::Client const &clientData = data.location(idx);
-        if (clientData.required || rng.rand() < 0.5)
+        if (clientData.required == pyvrp::ClientRequired::HARD || rng.rand() < 0.5)
             clients.push_back(idx);
     }
 
@@ -262,7 +262,7 @@ Solution::Solution(ProblemData const &data, std::vector<Route> routes)
         if (!isVisited[client])  // we need to check if the client visit
         {                        // is required if this is true
             ProblemData::Client const &clientData = data.location(client);
-            numMissingClients_ += clientData.required;
+            numMissingClients_ += clientData.required == pyvrp::ClientRequired::HARD;
         }
 
     for (auto const &group : data.groups())
@@ -273,7 +273,7 @@ Solution::Solution(ProblemData const &data, std::vector<Route> routes)
         assert(group.mutuallyExclusive);
         auto const inSol = [&](auto client) { return isVisited[client]; };
         auto const numInSol = std::count_if(group.begin(), group.end(), inSol);
-        isGroupFeas_ &= group.required ? numInSol == 1 : numInSol <= 1;
+        isGroupFeas_ &= group.required == pyvrp::ClientRequired::HARD ? numInSol == 1 : numInSol <= 1;
     }
 
     for (size_t vehType = 0; vehType != data.numVehicleTypes(); vehType++)
