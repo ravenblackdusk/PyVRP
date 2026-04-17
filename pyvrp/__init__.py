@@ -1,6 +1,7 @@
 import logging
 import sys
 
+from .Cost import Cost as Cost
 from .IteratedLocalSearch import IteratedLocalSearch as IteratedLocalSearch
 from .IteratedLocalSearch import (
     IteratedLocalSearchParams as IteratedLocalSearchParams,

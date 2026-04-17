@@ -5,6 +5,7 @@ from pytest import mark
 
 from pyvrp import (
     Client,
+    Cost,
     CostEvaluator,
     Depot,
     ProblemData,
@@ -128,7 +129,7 @@ def test_swap_star_can_swap_in_place():
 
     # Best is to exchange clients 1 and 3. The cost delta is all distance: it
     # saves one expensive arc of cost 10, by replacing it with one of cost 1.
-    assert_equal(swap_star.evaluate(route1, route2, cost_eval), -9)
+    assert_equal(swap_star.evaluate(route1, route2, cost_eval), Cost(-9))
 
     # Apply the move and test that it indeed swaps the nodes correctly.
     swap_star.apply(route1, route2)
@@ -178,7 +179,7 @@ def test_wrong_load_calculation_bug():
     # not change the solution's cost. Before the bug was fixed, it did: the
     # delivery demand was removed from one route but not added to the other,
     # which resulted in a large (wrong!) negative delta cost.
-    assert_equal(swap_star.evaluate(route1, route2, cost_eval), -36)
+    assert_equal(swap_star.evaluate(route1, route2, cost_eval), Cost(-36))
     swap_star.apply(route1, route2)
 
     assert_equal([node.client for node in route1], [3, 1])
@@ -203,7 +204,7 @@ def test_max_distance(ok_small):
     assert_equal(route2.distance(), 2_951)
 
     swap_star = SwapStar(ok_small, overlap_tolerance=1)
-    assert_equal(swap_star.evaluate(route1, route2, cost_eval), -1_043)
+    assert_equal(swap_star.evaluate(route1, route2, cost_eval), Cost(-1_043))
     swap_star.apply(route1, route2)
 
     # New route1 is 0 -> 2 -> 3 -> 4 -> 0, and route2 0 -> 1 -> 0. These new
@@ -227,7 +228,7 @@ def test_max_distance(ok_small):
     # distance difference as before.
     swap_star = SwapStar(data, overlap_tolerance=1)
     route1, route2 = make_routes(data)
-    assert_equal(swap_star.evaluate(route1, route2, cost_eval), -13_243)
+    assert_equal(swap_star.evaluate(route1, route2, cost_eval), Cost(-13_243))
     assert_equal(10 * (6_220 - 5_000) + 1_043, 13_243)
 
 
@@ -250,12 +251,12 @@ def test_swap_star_overlap_tolerance(ok_small):
     # move should evaluate to 0.
     swap_star = SwapStar(data, overlap_tolerance=0)
     cost_eval = CostEvaluator([1_000], 0, 0)
-    assert_equal(swap_star.evaluate(route1, route2, cost_eval), 0)
+    assert_equal(swap_star.evaluate(route1, route2, cost_eval), Cost(0))
 
     # But with full overlap tolerance, all routes should be checked. That
     # should lead to an improving move.
     swap_star = SwapStar(data, overlap_tolerance=1)
-    assert_(swap_star.evaluate(route1, route2, cost_eval) < 0)
+    assert_(swap_star.evaluate(route1, route2, cost_eval) < Cost(0))
 
 
 @pytest.mark.parametrize("tol", [-1.0, -0.01, 1.01, 10.9, 1000])

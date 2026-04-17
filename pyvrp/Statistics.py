@@ -93,11 +93,11 @@ class Statistics:
         self.num_iterations += 1
 
         datum = _Datum(
-            cost_evaluator.penalised_cost(current),
+            int(cost_evaluator.penalised_cost(current)),
             current.is_feasible(),
-            cost_evaluator.penalised_cost(candidate),
+            int(cost_evaluator.penalised_cost(candidate)),
             candidate.is_feasible(),
-            cost_evaluator.penalised_cost(best),
+            int(cost_evaluator.penalised_cost(best)),
             best.is_feasible(),
         )
         self.data.append(datum)

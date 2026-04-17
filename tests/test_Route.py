@@ -7,6 +7,7 @@ from numpy.testing import assert_, assert_allclose, assert_equal, assert_raises
 
 from pyvrp import (
     Client,
+    Cost,
     Depot,
     ProblemData,
     RandomNumberGenerator,
@@ -379,10 +380,10 @@ def test_distance_duration_cost_calculations(ok_small):
     data = ok_small.replace(vehicle_types=vehicle_types)
 
     routes = [Route(data, [1, 2], 0), Route(data, [3, 4], 1)]
-    assert_equal(routes[0].distance_cost(), 5 * routes[0].distance())
-    assert_equal(routes[0].duration_cost(), 1 * routes[0].duration())
-    assert_equal(routes[1].distance_cost(), 1 * routes[1].distance())
-    assert_equal(routes[1].duration_cost(), 5 * routes[1].duration())
+    assert_equal(routes[0].distance_cost(), Cost(5 * routes[0].distance()))
+    assert_equal(routes[0].duration_cost(), Cost(1 * routes[0].duration()))
+    assert_equal(routes[1].distance_cost(), Cost(1 * routes[1].distance()))
+    assert_equal(routes[1].duration_cost(), Cost(5 * routes[1].duration()))
 
 
 def test_start_end_depot_not_same_on_empty_route(ok_small_multi_depot):

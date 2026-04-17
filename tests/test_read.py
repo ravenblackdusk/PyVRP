@@ -9,7 +9,7 @@ from numpy.testing import (
     assert_raises,
 )
 
-from pyvrp import ClientRequired, CostEvaluator
+from pyvrp import ClientRequired, Cost, CostEvaluator
 from pyvrp.constants import MAX_VALUE
 from pyvrp.exceptions import ScalingWarning
 from tests.helpers import read, read_solution
@@ -162,7 +162,7 @@ def test_reading_vrplib_instance():
         assert_equal(data.location(loc).tw_early, 0)
         assert_equal(data.location(loc).tw_late, np.iinfo(np.int64).max)
         assert_equal(data.location(loc).release_time, 0)
-        assert_equal(data.location(loc).prize, 0)
+        assert_equal(data.location(loc).prize, Cost(0))
         assert_equal(data.location(loc).required, ClientRequired.HARD)
 
 
@@ -621,7 +621,7 @@ def test_reading_unit_distance_cost():
     assert_equal(data.num_vehicle_types, 3)
 
     for idx, veh_type in enumerate(data.vehicle_types(), 1):
-        assert_equal(veh_type.unit_distance_cost, idx)
+        assert_equal(veh_type.unit_distance_cost, Cost(idx))
 
 
 def test_read_hfvrp_instance():
@@ -639,14 +639,14 @@ def test_read_hfvrp_instance():
     veh_type1 = data.vehicle_type(0)
     assert_equal(veh_type1.num_available, 11)
     assert_equal(veh_type1.capacity, [54_000])
-    assert_equal(veh_type1.fixed_cost, 14_600_000)
-    assert_equal(veh_type1.unit_distance_cost, 58)
+    assert_equal(veh_type1.fixed_cost, Cost(14_600_000))
+    assert_equal(veh_type1.unit_distance_cost, Cost(58))
 
     veh_type2 = data.vehicle_type(1)
     assert_equal(veh_type2.num_available, 7)
     assert_equal(veh_type2.capacity, [131_000])
-    assert_equal(veh_type2.fixed_cost, 43_600_000)
-    assert_equal(veh_type2.unit_distance_cost, 100)
+    assert_equal(veh_type2.fixed_cost, Cost(43_600_000))
+    assert_equal(veh_type2.unit_distance_cost, Cost(100))
 
 
 def test_read_hfvrp_solution():
@@ -665,4 +665,4 @@ def test_read_hfvrp_solution():
     assert_equal(routes[-1].vehicle_type(), 2)
 
     cost_eval = CostEvaluator([0], 0, 0)
-    assert_equal(cost_eval.cost(sol), 1941256006)
+    assert_equal(cost_eval.cost(sol), Cost(1941256006))

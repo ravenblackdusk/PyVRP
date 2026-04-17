@@ -3,7 +3,7 @@ import pytest
 from numpy.testing import assert_, assert_allclose, assert_equal, assert_raises
 
 import pyvrp
-from pyvrp import Client, Depot, ProblemData, VehicleType
+from pyvrp import Client, Cost, Depot, ProblemData, VehicleType
 from pyvrp.search._search import Node, Route
 from tests.helpers import make_search_route
 
@@ -234,7 +234,7 @@ def test_fixed_vehicle_cost(ok_small, fixed_cost: int):
         vehicle_types=[VehicleType(2, capacity=[10], fixed_cost=fixed_cost)]
     )
     route = Route(data, idx=0, vehicle_type=0)
-    assert_equal(route.fixed_vehicle_cost(), fixed_cost)
+    assert_equal(route.fixed_vehicle_cost(), Cost(fixed_cost))
 
 
 @pytest.mark.parametrize("client", [1, 2, 3, 4])
@@ -1168,13 +1168,13 @@ def test_overtime(ok_small_overtime):
     assert_equal(route.shift_duration(), 5_000)
     assert_equal(route.max_overtime(), 1_000)
     assert_equal(route.max_duration(), 6_000)
-    assert_equal(route.unit_overtime_cost(), 10)
+    assert_equal(route.unit_overtime_cost(), Cost(10))
 
     # Route cost and feasibility attributes.
     assert_(not route.has_time_warp())
     assert_equal(route.duration(), 5_229)
     assert_equal(route.overtime(), 229)
-    assert_equal(route.duration_cost(), 1 * 5_229 + 10 * 229)
+    assert_equal(route.duration_cost(), Cost(1 * 5_229 + 10 * 229))
 
 
 def test_eq(ok_small):

@@ -290,8 +290,7 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
 
     // Required clients are not optional, and have just been inserted above
     // if not already in the solution. Groups have their own operator and are
-    // not processed here. SOFT clients follow the optional path below;
-    // the compound Cost type ensures they are always preferred.
+    // not processed here.
     if (uData.required == pyvrp::ClientRequired::HARD || uData.group)
         return;
 
@@ -305,6 +304,15 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
 
     if (U->route())
         return;
+
+    // SOFT clients use `insert()` which searches all neighbours and the
+    // first route's depot as fallback. The compound Cost type ensures the
+    // insert cost is always negative (missingSoftRequired decreases).
+    if (uData.required == pyvrp::ClientRequired::SOFT)
+    {
+        insert(U, costEvaluator, false);
+        return;
+    }
 
     // Attempt to re-insert U using a first-improving neighbourhood search.
     for (auto const vClient : searchSpace_.neighboursOf(U->client()))

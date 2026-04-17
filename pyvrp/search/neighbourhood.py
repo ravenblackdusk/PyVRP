@@ -149,7 +149,7 @@ def _compute_proximity(
     service[data.num_depots :] = [c.service_duration for c in data.clients()]
 
     prize = np.zeros_like(early)
-    prize[data.num_depots :] = [client.prize for client in data.clients()]
+    prize[data.num_depots :] = [int(client.prize) for client in data.clients()]
 
     # We first determine the elementwise minimum cost across all vehicle types.
     # This is the cheapest way any edge can be traversed.
