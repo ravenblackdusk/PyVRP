@@ -9,6 +9,7 @@ from pyvrp import (
     Client,
     ClientGroup,
     ClientRequired,
+    Cost,
     Depot,
     ProblemData,
     RandomNumberGenerator,
@@ -814,7 +815,7 @@ def test_fixed_vehicle_cost(
     ]
 
     sol = Solution(data, routes)
-    assert_equal(sol.fixed_vehicle_cost(), expected)
+    assert_equal(sol.fixed_vehicle_cost(), Cost(expected))
 
 
 @pytest.mark.parametrize(
@@ -884,9 +885,13 @@ def test_distance_duration_cost_calculations(ok_small):
 
     sol = Solution(data, routes)
     assert_equal(sol.distance(), sum(r.distance() for r in routes))
-    assert_equal(sol.distance_cost(), sum(r.distance_cost() for r in routes))
+    assert_equal(
+        sol.distance_cost(), Cost(sum(r.distance_cost() for r in routes))
+    )
     assert_equal(sol.duration(), sum(r.duration() for r in routes))
-    assert_equal(sol.duration_cost(), sum(r.duration_cost() for r in routes))
+    assert_equal(
+        sol.duration_cost(), Cost(sum(r.duration_cost() for r in routes))
+    )
 
 
 def test_overtime(ok_small_overtime):
@@ -903,7 +908,7 @@ def test_overtime(ok_small_overtime):
     assert_equal(route.overtime(), 229)
 
     # Duration cost includes the cost of overtime.
-    assert_equal(route.duration_cost(), 1 * 5_229 + 10 * 229)
+    assert_equal(route.duration_cost(), Cost(1 * 5_229 + 10 * 229))
 
     # Test that a solution consisting of this single route agrees on these
     # statistics.

@@ -104,14 +104,40 @@ struct type_caster<pyvrp::Measure<T, V>>
     }
 };
 
-// Caster for standalone Cost type. Python sees just the monetary component
-// as an int. Construction from Python int creates Cost{0, value}.
+// Caster for standalone Cost type. Python sees a pyvrp.Cost.Cost object that
+// behaves like an int for arithmetic and equality with plain numbers, but
+// supports lexicographic comparison with other Cost objects (msr first, then
+// monetary cost). Construction from Python accepts an int, a Cost object, or
+// a (missingSoftRequired, cost) tuple.
 template <> struct type_caster<pyvrp::Cost>
 {
-    PYBIND11_TYPE_CASTER(pyvrp::Cost, _("int"));
+    PYBIND11_TYPE_CASTER(pyvrp::Cost, _("Cost"));
 
     bool load(pybind11::handle src, bool convert)  // Python -> C++
     {
+        // Accept a pyvrp.Cost.Cost object.
+        if (pybind11::hasattr(src, "_msr") && pybind11::hasattr(src, "_cost"))
+        {
+            auto msr = src.attr("_msr").cast<int32_t>();
+            auto cost = src.attr("_cost").cast<int64_t>();
+            value = pyvrp::Cost(msr, cost);
+            return true;
+        }
+
+        // Accept a (msr, cost) tuple.
+        if (PyTuple_Check(src.ptr()))
+        {
+            auto tup = pybind11::reinterpret_borrow<pybind11::tuple>(src);
+            if (tup.size() != 2)
+                return false;
+
+            auto msr = tup[0].cast<int32_t>();
+            auto cost = tup[1].cast<int64_t>();
+            value = pyvrp::Cost(msr, cost);
+            return true;
+        }
+
+        // Accept a plain int.
         if (!convert && !PyLong_Check(src.ptr()))
             return false;
 
@@ -134,7 +160,9 @@ template <> struct type_caster<pyvrp::Cost>
          [[maybe_unused]] pybind11::return_value_policy policy,
          [[maybe_unused]] pybind11::handle parent)
     {
-        return PyLong_FromLongLong(src.get());
+        auto cost_mod = pybind11::module_::import("pyvrp.Cost");
+        auto cost_cls = cost_mod.attr("Cost");
+        return cost_cls(src.missingSoftRequired(), src.get()).release();
     }
 };
 

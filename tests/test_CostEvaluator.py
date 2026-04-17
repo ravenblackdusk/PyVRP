@@ -4,6 +4,7 @@ from numpy.testing import assert_, assert_equal, assert_raises
 
 from pyvrp import (
     Client,
+    Cost,
     CostEvaluator,
     Depot,
     ProblemData,
@@ -43,10 +44,10 @@ def test_load_penalty(load_penalty: float):
     pen = load_penalty
     cost_eval = CostEvaluator([pen], 1, 0)
 
-    assert_equal(cost_eval.load_penalty(0, 1, 0), 0)  # below capacity
-    assert_equal(cost_eval.load_penalty(1, 1, 0), 0)  # at capacity
-    assert_equal(cost_eval.load_penalty(2, 1, 0), 1 * pen)  # 1 above cap
-    assert_equal(cost_eval.load_penalty(3, 1, 0), 2 * pen)  # 2 above cap
+    assert_equal(cost_eval.load_penalty(0, 1, 0), Cost(0))  # below capacity
+    assert_equal(cost_eval.load_penalty(1, 1, 0), Cost(0))  # at capacity
+    assert_equal(cost_eval.load_penalty(2, 1, 0), Cost(1 * pen))  # 1 above cap
+    assert_equal(cost_eval.load_penalty(3, 1, 0), Cost(2 * pen))  # 2 above cap
 
 
 def test_load_penalty_multiple_dimensions():
@@ -58,10 +59,10 @@ def test_load_penalty_multiple_dimensions():
     cost_eval = CostEvaluator(load_penalties, 0, 0)
 
     for dim, pen in enumerate(load_penalties):
-        assert_equal(cost_eval.load_penalty(0, 1, dim), 0)  # below capacity
-        assert_equal(cost_eval.load_penalty(1, 1, dim), 0)  # at capacity
-        assert_equal(cost_eval.load_penalty(2, 1, dim), 1 * pen)  # 1 above cap
-        assert_equal(cost_eval.load_penalty(3, 1, dim), 2 * pen)  # 2 above cap
+        assert_equal(cost_eval.load_penalty(0, 1, dim), Cost(0))  # below capacity
+        assert_equal(cost_eval.load_penalty(1, 1, dim), Cost(0))  # at capacity
+        assert_equal(cost_eval.load_penalty(2, 1, dim), Cost(1 * pen))  # 1 above cap
+        assert_equal(cost_eval.load_penalty(3, 1, dim), Cost(2 * pen))  # 2 above cap
 
 
 @pytest.mark.parametrize("cap", [5, 15, 29, 51, 103])
@@ -73,11 +74,11 @@ def test_load_penalty_always_zero_when_below_capacity(cap: int):
     penalty = 2
     cost_eval = CostEvaluator([penalty], 1, 0)
 
-    assert_equal(cost_eval.load_penalty(0, cap, 0), 0)  # below cap
-    assert_equal(cost_eval.load_penalty(cap - 1, cap, 0), 0)
-    assert_equal(cost_eval.load_penalty(cap, cap, 0), 0)  # at cap
-    assert_equal(cost_eval.load_penalty(cap + 1, cap, 0), penalty)  # above cap
-    assert_equal(cost_eval.load_penalty(cap + 2, cap, 0), 2 * penalty)
+    assert_equal(cost_eval.load_penalty(0, cap, 0), Cost(0))  # below cap
+    assert_equal(cost_eval.load_penalty(cap - 1, cap, 0), Cost(0))
+    assert_equal(cost_eval.load_penalty(cap, cap, 0), Cost(0))  # at cap
+    assert_equal(cost_eval.load_penalty(cap + 1, cap, 0), Cost(penalty))  # above cap
+    assert_equal(cost_eval.load_penalty(cap + 2, cap, 0), Cost(2 * penalty))
 
 
 def test_tw_penalty():
@@ -87,16 +88,16 @@ def test_tw_penalty():
     cost_evaluator = CostEvaluator([1], 2, 0)
 
     # Penalty per unit time warp is 2.
-    assert_equal(cost_evaluator.tw_penalty(0), 0)
-    assert_equal(cost_evaluator.tw_penalty(1), 2)
-    assert_equal(cost_evaluator.tw_penalty(2), 4)
+    assert_equal(cost_evaluator.tw_penalty(0), Cost(0))
+    assert_equal(cost_evaluator.tw_penalty(1), Cost(2))
+    assert_equal(cost_evaluator.tw_penalty(2), Cost(4))
 
     cost_evaluator = CostEvaluator([1], 4, 0)
 
     # Penalty per unit excess capacity is now 4.
-    assert_equal(cost_evaluator.tw_penalty(0), 0)
-    assert_equal(cost_evaluator.tw_penalty(1), 4)
-    assert_equal(cost_evaluator.tw_penalty(2), 8)
+    assert_equal(cost_evaluator.tw_penalty(0), Cost(0))
+    assert_equal(cost_evaluator.tw_penalty(1), Cost(4))
+    assert_equal(cost_evaluator.tw_penalty(2), Cost(8))
 
 
 def test_dist_penalty():
@@ -106,18 +107,18 @@ def test_dist_penalty():
     cost_eval = CostEvaluator([1], 1, 2)
 
     # Penalty per unit excess distance is 2.
-    assert_equal(cost_eval.dist_penalty(-1, 0), 0)
-    assert_equal(cost_eval.dist_penalty(0, 0), 0)
-    assert_equal(cost_eval.dist_penalty(1, 0), 2)
-    assert_equal(cost_eval.dist_penalty(2, 0), 4)
+    assert_equal(cost_eval.dist_penalty(-1, 0), Cost(0))
+    assert_equal(cost_eval.dist_penalty(0, 0), Cost(0))
+    assert_equal(cost_eval.dist_penalty(1, 0), Cost(2))
+    assert_equal(cost_eval.dist_penalty(2, 0), Cost(4))
 
     cost_eval = CostEvaluator([1], 1, 4)
 
     # Penalty per unit excess capacity is now 4.
-    assert_equal(cost_eval.dist_penalty(-1, 0), 0)
-    assert_equal(cost_eval.dist_penalty(0, 0), 0)
-    assert_equal(cost_eval.dist_penalty(1, 0), 4)
-    assert_equal(cost_eval.dist_penalty(2, 0), 8)
+    assert_equal(cost_eval.dist_penalty(-1, 0), Cost(0))
+    assert_equal(cost_eval.dist_penalty(0, 0), Cost(0))
+    assert_equal(cost_eval.dist_penalty(1, 0), Cost(4))
+    assert_equal(cost_eval.dist_penalty(2, 0), Cost(8))
 
 
 def test_cost(ok_small):
@@ -132,13 +133,13 @@ def test_cost(ok_small):
     feas_sol = Solution(ok_small, [[1, 2], [3], [4]])  # feasible solution
     distance = feas_sol.distance()
 
-    assert_equal(cost_evaluator.cost(feas_sol), distance)
-    assert_equal(default_cost_evaluator.cost(feas_sol), distance)
+    assert_equal(cost_evaluator.cost(feas_sol), Cost(distance))
+    assert_equal(default_cost_evaluator.cost(feas_sol), Cost(distance))
 
     infeas_sol = Solution(ok_small, [[1, 2, 3, 4]])  # infeasible solution
     assert_(not infeas_sol.is_feasible())
 
-    infeas_cost = np.iinfo(np.int64).max
+    infeas_cost = Cost(int(np.iinfo(np.int32).max), int(np.iinfo(np.int64).max))
     assert_equal(cost_evaluator.cost(infeas_sol), infeas_cost)
     assert_equal(default_cost_evaluator.cost(infeas_sol), infeas_cost)
 
@@ -159,9 +160,9 @@ def test_cost_with_prizes(prize_collecting):
     collected = sum(prizes[:5])
     uncollected = sum(prizes) - collected
 
-    assert_equal(sol.prizes(), collected)
-    assert_equal(sol.uncollected_prizes(), uncollected)
-    assert_equal(sol.distance() + sol.uncollected_prizes(), cost)
+    assert_equal(sol.prizes(), Cost(collected))
+    assert_equal(sol.uncollected_prizes(), Cost(uncollected))
+    assert_equal(cost, Cost(sol.distance() + sol.uncollected_prizes()))
 
 
 def test_penalised_cost(ok_small):
@@ -180,8 +181,8 @@ def test_penalised_cost(ok_small):
     assert_(feas.is_feasible())
 
     # For a feasible solution, cost and penalised_cost equal distance.
-    assert_equal(cost_evaluator.penalised_cost(feas), feas.distance())
-    assert_equal(default_evaluator.penalised_cost(feas), feas.distance())
+    assert_equal(cost_evaluator.penalised_cost(feas), Cost(feas.distance()))
+    assert_equal(default_evaluator.penalised_cost(feas), Cost(feas.distance()))
 
     infeas = Solution(ok_small, [[1, 2, 3, 4]])
     assert_(not infeas.is_feasible())
@@ -193,10 +194,10 @@ def test_penalised_cost(ok_small):
 
     # Test penalised cost
     expected_cost = infeas_dist + load_penalty_cost + tw_penalty_cost
-    assert_equal(cost_evaluator.penalised_cost(infeas), expected_cost)
+    assert_equal(cost_evaluator.penalised_cost(infeas), Cost(expected_cost))
 
     # Default cost evaluator has 0 weights and only computes distance as cost
-    assert_equal(default_evaluator.penalised_cost(infeas), infeas_dist)
+    assert_equal(default_evaluator.penalised_cost(infeas), Cost(infeas_dist))
 
 
 def test_excess_distance_penalised_cost(ok_small):
@@ -220,7 +221,7 @@ def test_excess_distance_penalised_cost(ok_small):
     assert_equal(routes[1].excess_distance(), 0)
 
     cost_eval = CostEvaluator([0], 0, 10)
-    assert_equal(cost_eval.penalised_cost(sol), 5501 + 4224 + 10 * 501)
+    assert_equal(cost_eval.penalised_cost(sol), Cost(5501 + 4224 + 10 * 501))
 
 
 def test_excess_load_penalised_cost():
@@ -255,7 +256,7 @@ def test_excess_load_penalised_cost():
     assert_equal(sol.excess_load(), [3, 1])
 
     cost_eval = CostEvaluator([10, 10], 0, 0)
-    assert_equal(cost_eval.penalised_cost(sol), 10 * (1 + 2) + 10 * (0 + 1))
+    assert_equal(cost_eval.penalised_cost(sol), Cost(10 * (1 + 2) + 10 * (0 + 1)))
 
 
 @pytest.mark.parametrize(
@@ -288,8 +289,8 @@ def test_cost_with_fixed_vehicle_cost(
     # Solution is feasible, so penalised cost and regular cost are equal. Both
     # should contain the fixed vehicle cost.
     assert_(sol.is_feasible())
-    assert_equal(cost_eval.cost(sol), sol.distance() + expected)
-    assert_equal(cost_eval.penalised_cost(sol), sol.distance() + expected)
+    assert_equal(cost_eval.cost(sol), Cost(sol.distance() + expected))
+    assert_equal(cost_eval.penalised_cost(sol), Cost(sol.distance() + expected))
 
 
 def test_unit_distance_duration_cost(ok_small):
@@ -309,6 +310,6 @@ def test_unit_distance_duration_cost(ok_small):
     assert_equal(sol.duration(), 6_221 + 5_004)
 
     cost_eval = CostEvaluator([1], 1, 0)
-    assert_equal(sol.distance_cost(), 31_729)
-    assert_equal(sol.duration_cost(), 31_241)
-    assert_equal(cost_eval.penalised_cost(sol), 31_729 + 31_241)
+    assert_equal(sol.distance_cost(), Cost(31_729))
+    assert_equal(sol.duration_cost(), Cost(31_241))
+    assert_equal(cost_eval.penalised_cost(sol), Cost(31_729 + 31_241))

@@ -210,7 +210,7 @@ def test_infeasible_offspring_is_repaired(rc208):
 
     def search(sol, cost_eval):
         booster_cost = pm.booster_cost_evaluator().penalised_cost(sol)
-        if np.isclose(cost_eval.penalised_cost(sol), booster_cost):
+        if cost_eval.penalised_cost(sol) == booster_cost:
             # When a solution is being repaired, a special booster evaluator is
             # used. In that case we return the BKS, which should become the new
             # best solution.

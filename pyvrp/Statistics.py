@@ -128,7 +128,8 @@ class Statistics:
 
         size = len(subpop)
         costs = [
-            cost_evaluator.penalised_cost(item.solution) for item in subpop
+            cost_evaluator.penalised_cost(item.solution)
+            for item in subpop
         ]
         num_routes = [item.solution.num_routes() for item in subpop]
         diversities = [item.avg_distance_closest() for item in subpop]
@@ -136,7 +137,7 @@ class Statistics:
         return _Datum(
             size=size,
             avg_diversity=fmean(diversities),
-            best_cost=min(costs),
+            best_cost=float(min(costs)),
             avg_cost=fmean(costs),
             avg_num_routes=fmean(num_routes),
         )

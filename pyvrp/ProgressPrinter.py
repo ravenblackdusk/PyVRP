@@ -4,6 +4,7 @@ from time import perf_counter
 
 from pyvrp._pyvrp import ProblemData
 
+from .Cost import Cost
 from .Result import Result
 from .Statistics import Statistics
 
@@ -58,7 +59,7 @@ class ProgressPrinter:
         self._print = should_print
         self._display_interval = display_interval
         self._last_print_time = perf_counter()
-        self._best_cost = float("inf")
+        self._best_cost = Cost(2**31 - 1, 2**63 - 1)
 
     def iteration(self, stats: Statistics):
         """
@@ -80,8 +81,9 @@ class ProgressPrinter:
         feas = stats.feas_stats[-1]
         infeas = stats.infeas_stats[-1]
 
+        feas_best = Cost(round(feas.best_cost)) if feas.size else None
         msg = _ITERATION.format(
-            special="H" if feas.best_cost < self._best_cost else " ",
+            special="H" if feas_best is not None and feas_best < self._best_cost else " ",
             iters=stats.num_iterations,
             elapsed=round(sum(stats.runtimes)),
             feas_size=feas.size,
@@ -95,8 +97,8 @@ class ProgressPrinter:
         logger.info(msg)
 
         self._last_print_time = curr_time
-        if feas.best_cost < self._best_cost:
-            self._best_cost = feas.best_cost
+        if feas_best is not None and feas_best < self._best_cost:
+            self._best_cost = feas_best
 
     def start(self, data: ProblemData):
         """

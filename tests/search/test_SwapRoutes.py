@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 from numpy.testing import assert_, assert_equal
 
-from pyvrp import Client, CostEvaluator, Depot, ProblemData, VehicleType
+from pyvrp import Client, Cost, CostEvaluator, Depot, ProblemData, VehicleType
 from pyvrp.search import SwapRoutes
 from pyvrp.search._search import Node, Route
 from tests.helpers import make_search_route
@@ -51,7 +51,7 @@ def test_evaluate_same_vehicle_type(ok_small):
 
     op = SwapRoutes(ok_small)
     cost_eval = CostEvaluator([1], 1, 0)
-    assert_equal(op.evaluate(route1, route2, cost_eval), 0)
+    assert_equal(op.evaluate(route1, route2, cost_eval), Cost(0))
 
 
 def test_same_route(ok_small):
@@ -63,7 +63,7 @@ def test_same_route(ok_small):
 
     op = SwapRoutes(ok_small)
     cost_eval = CostEvaluator([1], 1, 0)
-    assert_equal(op.evaluate(route, route, cost_eval), 0)
+    assert_equal(op.evaluate(route, route, cost_eval), Cost(0))
 
 
 def test_evaluate_empty_routes(ok_small):
@@ -92,12 +92,12 @@ def test_evaluate_empty_routes(ok_small):
     # Vehicle types are no longer the same, but one of the routes is empty.
     # That situation is not currently handled.
     assert_(route1.vehicle_type != route2.vehicle_type)
-    assert_equal(op.evaluate(route1, route2, cost_eval), 0)
-    assert_equal(op.evaluate(route2, route1, cost_eval), 0)
+    assert_equal(op.evaluate(route1, route2, cost_eval), Cost(0))
+    assert_equal(op.evaluate(route2, route1, cost_eval), Cost(0))
 
     # Both routes are empty, but of different vehicle type as well.
     assert_equal(len(route2), len(route3))
-    assert_equal(op.evaluate(route3, route2, cost_eval), 0)
+    assert_equal(op.evaluate(route3, route2, cost_eval), Cost(0))
 
 
 def test_evaluate_capacity_differences(ok_small):
@@ -127,7 +127,7 @@ def test_evaluate_capacity_differences(ok_small):
     # of 15 on route1 is below route2's capacity, and similarly for route2's
     # load and route1's capacity. Since we price unit load violations at 40,
     # this should result in a delta cost of -200.
-    assert_equal(op.evaluate(route1, route2, cost_eval), -200)
+    assert_equal(op.evaluate(route1, route2, cost_eval), Cost(-200))
 
     # Apply the move, update the routes, and then check if they're now both
     # feasible.
@@ -166,7 +166,7 @@ def test_evaluate_shift_time_window_differences(ok_small):
     # a lower cost, due to decreased time warp on the routes.
     op = SwapRoutes(data)
     cost_eval = CostEvaluator([1], 1, 0)
-    assert_(op.evaluate(route1, route2, cost_eval) < 0)
+    assert_(op.evaluate(route1, route2, cost_eval) < Cost(0))
 
 
 def test_evaluate_shift_latest_start_differences(ok_small):
@@ -207,7 +207,7 @@ def test_evaluate_shift_latest_start_differences(ok_small):
     # since the wait before the first client is reduced.
     op = SwapRoutes(data)
     cost_eval = CostEvaluator([1], 1, 0)
-    assert_equal(op.evaluate(route1, route2, cost_eval), -1_000)
+    assert_equal(op.evaluate(route1, route2, cost_eval), Cost(-1_000))
 
 
 def test_evaluate_shift_duration_constraints(ok_small):
@@ -240,7 +240,7 @@ def test_evaluate_shift_duration_constraints(ok_small):
     # time warp.
     op = SwapRoutes(data)
     cost_eval = CostEvaluator([1], 1, 0)
-    assert_equal(op.evaluate(route1, route2, cost_eval), -9)
+    assert_equal(op.evaluate(route1, route2, cost_eval), Cost(-9))
 
 
 def test_evaluate_with_different_depots():
@@ -277,7 +277,7 @@ def test_evaluate_with_different_depots():
     # of 2 * 12 = 24.
     assert_equal(route1.distance(), 16)
     assert_equal(route2.distance(), 16)
-    assert_equal(op.evaluate(route1, route2, cost_eval), -24)
+    assert_equal(op.evaluate(route1, route2, cost_eval), Cost(-24))
 
 
 def test_different_objectives(ok_small_multi_depot):
@@ -301,19 +301,19 @@ def test_different_objectives(ok_small_multi_depot):
     cost_eval = CostEvaluator([1], 1, 0)
 
     route1 = make_search_route(data, [3], idx=0, vehicle_type=0)  # 0 -> 3 -> 0
-    assert_equal(route1.distance_cost(), 3_994)
-    assert_equal(route1.duration_cost(), 0)
+    assert_equal(route1.distance_cost(), Cost(3_994))
+    assert_equal(route1.duration_cost(), Cost(0))
 
     route2 = make_search_route(data, [2], idx=1, vehicle_type=1)  # 1 -> 2 -> 1
-    assert_equal(route2.distance_cost(), 0)
-    assert_equal(route2.duration_cost(), 4_327)
+    assert_equal(route2.distance_cost(), Cost(0))
+    assert_equal(route2.duration_cost(), Cost(4_327))
 
     # The proposed new distance (on route1) is  dist(0, 2) + dist(2, 0) =
     # 3_909, so its cost contribution is also 3_909. The proposed new duration
     # (on route2) is duration(1, 3) + service(3) + duration(3, 1) = 3_280, with
     # again a cost contribution of 3_280.
     delta_cost = op.evaluate(route1, route2, cost_eval)
-    assert_equal(delta_cost, 3_909 + 3_280 - 3_994 - 4_327)
+    assert_equal(delta_cost, Cost(3_909 + 3_280 - 3_994 - 4_327))
 
 
 def test_supports(ok_small, ok_small_two_profiles):

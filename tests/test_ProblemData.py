@@ -5,7 +5,7 @@ import pytest
 from numpy.random import default_rng
 from numpy.testing import assert_, assert_allclose, assert_equal, assert_raises
 
-from pyvrp import Client, ClientGroup, ClientRequired, Depot, ProblemData, VehicleType
+from pyvrp import Client, ClientGroup, ClientRequired, Cost, Depot, ProblemData, VehicleType
 
 _INT_MAX = np.iinfo(np.int64).max
 _MAX_SIZE = np.iinfo(np.uint64).max
@@ -80,7 +80,7 @@ def test_client_constructor_initialises_data_fields_correctly(
     assert_equal(client.tw_early, tw_early)
     assert_equal(client.tw_late, tw_late)
     assert_equal(client.release_time, release_time)
-    assert_equal(client.prize, prize)
+    assert_equal(client.prize, Cost(prize))
     assert_equal(client.required, required)
     assert_equal(client.group, group)
     assert_equal(client.name, name)
@@ -591,13 +591,13 @@ def test_vehicle_type_does_not_raise_for_all_zero_edge_case():
     assert_equal(vehicle_type.start_depot, 0)
     assert_equal(vehicle_type.end_depot, 0)
     assert_equal(vehicle_type.capacity, [])
-    assert_equal(vehicle_type.fixed_cost, 0)
+    assert_equal(vehicle_type.fixed_cost, Cost(0))
     assert_equal(vehicle_type.tw_early, 0)
     assert_equal(vehicle_type.tw_late, 0)
     assert_equal(vehicle_type.shift_duration, 0)
     assert_equal(vehicle_type.max_distance, 0)
-    assert_equal(vehicle_type.unit_distance_cost, 0)
-    assert_equal(vehicle_type.unit_duration_cost, 0)
+    assert_equal(vehicle_type.unit_distance_cost, Cost(0))
+    assert_equal(vehicle_type.unit_duration_cost, Cost(0))
     assert_equal(vehicle_type.start_late, 0)
 
 
@@ -611,11 +611,11 @@ def test_vehicle_type_default_values():
     assert_equal(vehicle_type.start_depot, 0)
     assert_equal(vehicle_type.end_depot, 0)
     assert_equal(vehicle_type.capacity, [])
-    assert_equal(vehicle_type.fixed_cost, 0)
+    assert_equal(vehicle_type.fixed_cost, Cost(0))
     assert_equal(vehicle_type.tw_early, 0)
-    assert_equal(vehicle_type.unit_distance_cost, 1)
-    assert_equal(vehicle_type.unit_duration_cost, 0)
-    assert_equal(vehicle_type.unit_overtime_cost, 0)
+    assert_equal(vehicle_type.unit_distance_cost, Cost(1))
+    assert_equal(vehicle_type.unit_duration_cost, Cost(0))
+    assert_equal(vehicle_type.unit_overtime_cost, Cost(0))
     assert_equal(vehicle_type.name, "")
 
     # The default value for the following fields is the largest representable
@@ -655,13 +655,13 @@ def test_vehicle_type_attribute_access():
     assert_equal(vehicle_type.start_depot, 29)
     assert_equal(vehicle_type.end_depot, 43)
     assert_equal(vehicle_type.capacity, [13])
-    assert_equal(vehicle_type.fixed_cost, 3)
+    assert_equal(vehicle_type.fixed_cost, Cost(3))
     assert_equal(vehicle_type.tw_early, 17)
     assert_equal(vehicle_type.tw_late, 19)
     assert_equal(vehicle_type.shift_duration, 23)
     assert_equal(vehicle_type.max_distance, 31)
-    assert_equal(vehicle_type.unit_distance_cost, 37)
-    assert_equal(vehicle_type.unit_duration_cost, 41)
+    assert_equal(vehicle_type.unit_distance_cost, Cost(37))
+    assert_equal(vehicle_type.unit_duration_cost, Cost(41))
     assert_equal(vehicle_type.start_late, 18)
     assert_equal(vehicle_type.max_overtime, 43)
 

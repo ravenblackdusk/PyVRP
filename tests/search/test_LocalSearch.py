@@ -5,6 +5,7 @@ from numpy.testing import assert_, assert_equal, assert_raises
 from pyvrp import (
     Client,
     ClientRequired,
+    Cost,
     CostEvaluator,
     Depot,
     ProblemData,
@@ -469,7 +470,7 @@ def test_replacing_optional_client():
 
     # We start with a solution containing just client 1.
     sol = Solution(data, [[1]])
-    assert_equal(sol.prizes(), 1)
+    assert_equal(sol.prizes(), Cost(1))
     assert_(sol.is_feasible())
 
     # A unit of time warp has a penalty of 5 units, so it's never worthwhile to
@@ -477,7 +478,7 @@ def test_replacing_optional_client():
     # with 2 yields a prize of 5, rather than 1, at no additional cost.
     cost_eval = CostEvaluator([], 5, 0)
     improved = ls(sol, cost_eval)
-    assert_equal(improved.prizes(), 5)
+    assert_equal(improved.prizes(), Cost(5))
     assert_(improved.is_feasible())
 
 

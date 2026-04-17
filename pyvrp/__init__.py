@@ -1,6 +1,7 @@
 import logging
 import sys
 
+from .Cost import Cost as Cost
 from .GeneticAlgorithm import GeneticAlgorithm as GeneticAlgorithm
 from .GeneticAlgorithm import GeneticAlgorithmParams as GeneticAlgorithmParams
 from .Model import Edge as Edge
