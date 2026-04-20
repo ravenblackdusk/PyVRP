@@ -65,6 +65,10 @@ def test_data_point_matches_collect(ok_small):
 
     assert_equal(datum.current_cost, 28408)
     assert_(not datum.current_feas)
+    assert_equal(
+        datum.current_route_durations,
+        tuple(r.duration() for r in curr.routes()),
+    )
 
     assert_equal(datum.candidate_cost, 10012)
     assert_(datum.candidate_feas)
@@ -116,6 +120,7 @@ def test_more_eq(ok_small):
 
     # But once we fix that the two should be the exact same again.
     stats2.runtimes = stats1.runtimes
+    stats2.data = stats1.data
     assert_equal(stats1, stats2)
 
 
@@ -129,6 +134,7 @@ def test_iterating_over_statistics_returns_data(ok_small):
     sol = Solution(ok_small, [[1, 2], [3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
     cost = cost_eval.penalised_cost(sol)
+    route_durations = tuple(r.duration() for r in sol.routes())
 
     stats.collect(sol, sol, sol, cost_eval)
     stats.collect(sol, sol, sol, cost_eval)
@@ -136,9 +142,11 @@ def test_iterating_over_statistics_returns_data(ok_small):
     assert_equal(len(list(stats)), 2)
 
     for datum in stats:
+        assert_(datum.elapsed >= 0)
         assert_equal(datum.current_cost, cost)
         assert_equal(datum.candidate_cost, cost)
         assert_equal(datum.best_cost, cost)
+        assert_equal(datum.current_route_durations, route_durations)
         assert_(datum.current_feas)
         assert_(datum.candidate_feas)
         assert_(datum.best_feas)

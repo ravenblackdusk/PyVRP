@@ -2,7 +2,7 @@ import csv
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
 from time import perf_counter
-from typing import Iterator, Literal
+from typing import Iterator, Literal, get_origin
 
 from pyvrp._pyvrp import CostEvaluator, Solution
 
@@ -13,8 +13,10 @@ class _Datum:
     Single iteration data point.
     """
 
+    elapsed: float
     current_cost: int
     current_feas: bool
+    current_route_durations: tuple[int, ...]
     candidate_cost: int
     candidate_feas: bool
     best_cost: int
@@ -93,8 +95,10 @@ class Statistics:
         self.num_iterations += 1
 
         datum = _Datum(
+            sum(self.runtimes),
             cost_evaluator.penalised_cost(current),
             current.is_feasible(),
+            tuple(r.duration() for r in current.routes()),
             cost_evaluator.penalised_cost(candidate),
             candidate.is_feasible(),
             cost_evaluator.penalised_cost(best),
@@ -133,6 +137,13 @@ class Statistics:
                 if name in field2type:
                     if field2type[name] is bool:
                         datum[name] = bool(int(value))
+                    elif get_origin(field2type[name]) is tuple:
+                        if value:
+                            datum[name] = tuple(
+                                int(x) for x in value.split(";")
+                            )
+                        else:
+                            datum[name] = ()
                     else:
                         datum[name] = field2type[name](value)  # type: ignore
 
@@ -180,9 +191,13 @@ class Statistics:
             writer.writeheader()
 
             for datum, runtime in zip(self.data, self.runtimes):
-                row = {
-                    f: int(v) if isinstance(v, bool) else v  # bool as 0/1
-                    for f, v in asdict(datum).items()
-                }
+                row = {}
+                for f, v in asdict(datum).items():
+                    if isinstance(v, bool):
+                        row[f] = int(v)  # bool as 0/1
+                    elif isinstance(v, (list, tuple)):
+                        row[f] = ";".join(str(x) for x in v)
+                    else:
+                        row[f] = v
                 row["runtime"] = runtime
                 writer.writerow(row)
