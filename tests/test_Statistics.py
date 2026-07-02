@@ -75,6 +75,10 @@ def test_data_point_matches_collect(ok_small):
 
     assert_equal(datum.best_cost, 9725)
     assert_(datum.best_feas)
+    assert_equal(
+        datum.best_route_durations,
+        tuple(r.duration() for r in best.routes()),
+    )
 
 
 @pytest.mark.parametrize("num_iterations", [0, 1, 10])
@@ -147,6 +151,7 @@ def test_iterating_over_statistics_returns_data(ok_small):
         assert_equal(datum.candidate_cost, cost)
         assert_equal(datum.best_cost, cost)
         assert_equal(datum.current_route_durations, route_durations)
+        assert_equal(datum.best_route_durations, route_durations)
         assert_(datum.current_feas)
         assert_(datum.candidate_feas)
         assert_(datum.best_feas)

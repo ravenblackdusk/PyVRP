@@ -21,6 +21,7 @@ class _Datum:
     candidate_feas: bool
     best_cost: int
     best_feas: bool
+    best_route_durations: tuple[int, ...]
 
 
 class Statistics:
@@ -103,6 +104,7 @@ class Statistics:
             candidate.is_feasible(),
             cost_evaluator.penalised_cost(best),
             best.is_feasible(),
+            tuple(r.duration() for r in best.routes()),
         )
         self.data.append(datum)
 
