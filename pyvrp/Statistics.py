@@ -1,5 +1,5 @@
 import csv
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from time import perf_counter
 from typing import Iterator, Literal, get_origin
@@ -13,7 +13,9 @@ class _Datum:
     Single iteration data point.
     """
 
-    elapsed: float
+    # wall-clock time is not part of the search trajectory, so it does not
+    # participate in equality (same-seed runs must compare equal)
+    elapsed: float = field(compare=False)
     current_cost: int
     current_feas: bool
     current_route_durations: tuple[int, ...]
