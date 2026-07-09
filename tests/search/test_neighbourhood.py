@@ -247,3 +247,30 @@ def test_multiple_routing_profiles(ok_small):
     # neighbourhood computations, resulting in the same neighbourhood as with
     # the original (unchanged) data.
     assert_equal(compute_neighbours(data), compute_neighbours(ok_small))
+
+
+def test_edge_aware_neighbours_prefer_connected_clients(ok_small):
+    """
+    Tests that clients whose connecting edge is absent from the instance
+    (modelled as a MAX_VALUE distance) are pushed behind connected clients in
+    the neighbourhood, and that neighbourhood sizes are unchanged.
+    """
+    from pyvrp.constants import MAX_VALUE
+
+    dist = np.array(ok_small.distance_matrix(0), copy=True)
+    dist[1, 2] = dist[1, 4] = MAX_VALUE  # client 1 only connects to client 3
+    data = ok_small.replace(distance_matrices=[dist])
+
+    params = NeighbourhoodParams(num_neighbours=1)
+    assert_equal(compute_neighbours(data, params)[1], [3])
+
+    params = NeighbourhoodParams(num_neighbours=3)
+    neighbours = compute_neighbours(data, params)
+    default = compute_neighbours(ok_small, params)
+    assert_equal(neighbours[1][0], 3)  # the only connected client first
+    assert_equal(len(neighbours[1]), len(default[1]))
+
+    # other clients keep full connectivity towards 2..4, but their edge to
+    # client 1 is intact, so client 1 may still appear in their lists
+    for loc in (2, 3, 4):
+        assert_equal(len(neighbours[loc]), len(default[loc]))

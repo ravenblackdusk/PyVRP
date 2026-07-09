@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from pyvrp.constants import MAX_VALUE
+
 if TYPE_CHECKING:
     from pyvrp import ProblemData
 
@@ -100,7 +102,8 @@ def compute_neighbours(
     top_k = np.argsort(proximity, axis=1, kind="stable")[data.num_depots :, :k]
 
     if not params.symmetric_neighbours:
-        return [[] for _ in range(data.num_depots)] + top_k.tolist()
+        neighbours = [[] for _ in range(data.num_depots)] + top_k.tolist()
+        return _prefer_edged_neighbours(data, neighbours)
 
     # Construct a symmetric adjacency matrix and return the adjacent clients
     # as the neighbourhood structure.
@@ -109,7 +112,42 @@ def compute_neighbours(
     adj[rows, top_k] = True
     adj = adj | adj.transpose()
 
-    return [np.flatnonzero(row).tolist() for row in adj]
+    neighbours = [np.flatnonzero(row).tolist() for row in adj]
+    return _prefer_edged_neighbours(data, neighbours)
+
+
+def _prefer_edged_neighbours(
+    data: ProblemData, neighbours: list[list[int]]
+) -> list[list[int]]:
+    """
+    Reorders each client's neighbourhood to prefer clients reachable over an
+    edge that actually exists in the instance. Edges at ``MAX_VALUE`` distance
+    are treated as absent (as e.g. precedence-pruned instances model them):
+    each neighbourhood keeps its size, filled with connected neighbours first
+    (in proximity order), then connected clients outside the original
+    neighbourhood, and only then unconnected neighbours. This is a no-op for
+    fully connected instances.
+    """
+    min_distance = np.minimum.reduce(data.distance_matrices())
+    has_edge = min_distance < MAX_VALUE
+    clients = has_edge[data.num_depots :, data.num_depots :]
+    if clients.all():  # fully connected — the default neighbourhood stands
+        return neighbours
+
+    result: list[list[int]] = list(neighbours[: data.num_depots])
+    for loc in range(data.num_depots, len(neighbours)):
+        default = neighbours[loc]
+        edged = np.flatnonzero(has_edge[loc, data.num_depots :])
+        edged += data.num_depots
+        edged_set = set(edged.tolist()) - {loc}
+        default_set = set(default)
+        edged_in_default = [n for n in default if n in edged_set]
+        edged_outside = [n for n in edged.tolist() if n != loc and n not in default_set]
+        unedged_in_default = [n for n in default if n not in edged_set]
+        combined = edged_in_default + edged_outside + unedged_in_default
+        result.append(combined[: len(default)])
+
+    return result
 
 
 def _compute_proximity(
