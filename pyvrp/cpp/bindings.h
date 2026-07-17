@@ -104,6 +104,52 @@ struct type_caster<pyvrp::Measure<T, V>>
     }
 };
 
+// Type caster for boolean-valued matrices (stored as uint8_t), used for the
+// edge existence matrices.
+template <> struct type_caster<pyvrp::Matrix<uint8_t>>
+{
+    PYBIND11_TYPE_CASTER(pyvrp::Matrix<uint8_t>, _("numpy.ndarray[bool]"));
+
+    bool load(pybind11::handle src, bool convert)  // Python -> C++
+    {
+        if (!convert && !pybind11::array_t<uint8_t>::check_(src))
+            return false;
+
+        auto const style
+            = pybind11::array::c_style | pybind11::array::forcecast;
+        auto const buf = pybind11::array_t<uint8_t, style>::ensure(src);
+
+        if (!buf || buf.ndim() != 2)
+            throw pybind11::value_error("Expected 2D np.ndarray argument!");
+
+        if (buf.size() == 0)  // then the default constructed object is already
+            return true;      // OK, and we have nothing to do.
+
+        std::vector<uint8_t> data = {buf.data(), buf.data() + buf.size()};
+        value = pyvrp::Matrix<uint8_t>(
+            std::move(data), buf.shape(0), buf.shape(1));
+
+        return true;
+    }
+
+    static pybind11::handle
+    cast(pyvrp::Matrix<uint8_t> const &src,  // C++ -> Python
+         [[maybe_unused]] pybind11::return_value_policy policy,
+         pybind11::handle parent)
+    {
+        pybind11::array_t<bool> array
+            = {{src.numRows(), src.numCols()},              // shape
+               {src.numCols(), size_t(1)},                  // strides
+               reinterpret_cast<bool const *>(src.data()),  // data
+               parent};                                     // base
+
+        pybind11::detail::array_proxy(array.ptr())->flags
+            &= ~pybind11::detail::npy_api::NPY_ARRAY_WRITEABLE_;
+
+        return array.release();
+    }
+};
+
 // Caster for standalone Cost type. Python sees a pyvrp.Cost.Cost object that
 // behaves like an int for arithmetic and equality with plain numbers, but
 // supports lexicographic comparison with other Cost objects (msr first, then

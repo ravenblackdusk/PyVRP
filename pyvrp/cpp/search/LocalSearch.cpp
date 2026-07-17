@@ -302,6 +302,33 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
         update(route, route);
     }
 
+    // Evict a SOFT client whose removal strictly decreases the number of
+    // missing edges the solution uses, for example after a random initial
+    // solution or a perturbation. The gated (re)insertion below then finds a
+    // position that does not add missing edges, or leaves the client out.
+    // Requiring a strict decrease means evictions cannot cycle: the number
+    // of missing edges in use is bounded from below.
+    if (auto *route = U->route();
+        route && uData.required == pyvrp::ClientRequired::SOFT)
+    {
+        auto const profile = route->profile();
+        auto const *prev = p(U);
+        auto const *next = n(U);
+
+        auto const removed
+            = !data.edgeExists(profile, prev->client(), U->client())
+              + !data.edgeExists(profile, U->client(), next->client());
+        auto const added
+            = !data.edgeExists(profile, prev->client(), next->client());
+
+        if (removed > added)
+        {
+            searchSpace_.markPromising(U);
+            route->remove(U->idx());
+            update(route, route);
+        }
+    }
+
     if (U->route())
         return;
 
@@ -339,6 +366,7 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
         // a group, and replacing V with U is improving, we also do that now.
         ProblemData::Client const &vData = data.location(V->client());
         if (vData.required != pyvrp::ClientRequired::HARD && !vData.group
+            && !inplaceAddsMissingEdges(U, V, data)
             && inplaceCost(U, V, data, costEvaluator) < 0)
         {
             searchSpace_.markPromising(V);
@@ -422,7 +450,8 @@ void LocalSearch::applyGroupMoves(Route::Node *U,
 
     // Test swapping U and V, and do so if U is better to have than V.
     auto *V = &solution_.nodes[inSol[range.back()]];
-    if (U != V && inplaceCost(U, V, data, costEvaluator) < 0)
+    if (U != V && !inplaceAddsMissingEdges(U, V, data)
+        && inplaceCost(U, V, data, costEvaluator) < 0)
     {
         auto *route = V->route();
         auto const idx = V->idx();

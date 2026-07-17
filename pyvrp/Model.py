@@ -195,6 +195,7 @@ class Model:
                 )
                 for frm in range(data.num_locations)
                 for to in range(data.num_locations)
+                if data.edge_exists(idx, frm, to)
             ]
 
         self = Model()
@@ -474,34 +475,47 @@ class Model:
         np.fill_diagonal(base_distance, 0)
         np.fill_diagonal(base_duration, 0)
 
+        # Edges the user did not add explicitly get the fill value above, but
+        # do not actually exist in the underlying network. We track existence
+        # separately, so the solver can avoid using missing edges. Self loops
+        # always exist.
+        base_exists = np.zeros((len(locs), len(locs)), dtype=bool)
+        np.fill_diagonal(base_exists, True)
+
         for edge in self._edges:
             frm = loc2idx[id(edge.frm)]
             to = loc2idx[id(edge.to)]
             base_distance[frm, to] = edge.distance
             base_duration[frm, to] = edge.duration
+            base_exists[frm, to] = True
 
         # Now we create the profile-specific distance and duration matrices.
         # These are based on the base matrices.
         distances = []
         durations = []
+        exists = []
         for profile in self._profiles:
             prof_distance = base_distance.copy()
             prof_duration = base_duration.copy()
+            prof_exists = base_exists.copy()
 
             for edge in profile.edges:
                 frm = loc2idx[id(edge.frm)]
                 to = loc2idx[id(edge.to)]
                 prof_distance[frm, to] = edge.distance
                 prof_duration[frm, to] = edge.duration
+                prof_exists[frm, to] = True
 
             distances.append(prof_distance)
             durations.append(prof_duration)
+            exists.append(prof_exists)
 
         # When the user has not provided any profiles, we create an implicit
         # first profile from the base matrices.
         if not self._profiles:
             distances = [base_distance]
             durations = [base_duration]
+            exists = [base_exists]
 
         return ProblemData(
             self._clients,
@@ -510,6 +524,7 @@ class Model:
             distances,
             durations,
             self._groups,
+            exists,
         )
 
     def solve(

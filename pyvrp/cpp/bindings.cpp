@@ -401,13 +401,15 @@ PYBIND11_MODULE(_pyvrp, m)
                       std::vector<ProblemData::VehicleType>,
                       std::vector<Matrix<pyvrp::Distance>>,
                       std::vector<Matrix<pyvrp::Duration>>,
-                      std::vector<ProblemData::ClientGroup>>(),
+                      std::vector<ProblemData::ClientGroup>,
+                      std::vector<Matrix<uint8_t>>>(),
              py::arg("clients"),
              py::arg("depots"),
              py::arg("vehicle_types"),
              py::arg("distance_matrices"),
              py::arg("duration_matrices"),
-             py::arg("groups") = py::list())
+             py::arg("groups") = py::list(),
+             py::arg("edge_exists") = py::list())
         .def("replace",
              &ProblemData::replace,
              py::arg("clients") = py::none(),
@@ -416,6 +418,7 @@ PYBIND11_MODULE(_pyvrp, m)
              py::arg("distance_matrices") = py::none(),
              py::arg("duration_matrices") = py::none(),
              py::arg("groups") = py::none(),
+             py::arg("edge_exists") = py::none(),
              DOC(pyvrp, ProblemData, replace))
         .def_property_readonly("num_clients",
                                &ProblemData::numClients,
@@ -483,6 +486,16 @@ PYBIND11_MODULE(_pyvrp, m)
              &ProblemData::durationMatrices,
              py::return_value_policy::reference_internal,
              DOC(pyvrp, ProblemData, durationMatrices))
+        .def("edge_exists_matrices",
+             &ProblemData::edgeExistsMatrices,
+             py::return_value_policy::reference_internal,
+             DOC(pyvrp, ProblemData, edgeExistsMatrices))
+        .def("edge_exists",
+             &ProblemData::edgeExists,
+             py::arg("profile"),
+             py::arg("frm"),
+             py::arg("to"),
+             DOC(pyvrp, ProblemData, edgeExists))
         .def("centroid",
              &ProblemData::centroid,
              py::return_value_policy::reference_internal,
@@ -518,7 +531,8 @@ PYBIND11_MODULE(_pyvrp, m)
                                       data.vehicleTypes(),
                                       data.distanceMatrices(),
                                       data.durationMatrices(),
-                                      data.groups());
+                                      data.groups(),
+                                      data.edgeExistsMatrices());
             },
             [](py::tuple t) {  // __setstate__
                 using Clients = std::vector<ProblemData::Client>;
@@ -527,13 +541,15 @@ PYBIND11_MODULE(_pyvrp, m)
                 using DistMats = std::vector<pyvrp::Matrix<pyvrp::Distance>>;
                 using DurMats = std::vector<pyvrp::Matrix<pyvrp::Duration>>;
                 using Groups = std::vector<ProblemData::ClientGroup>;
+                using ExistsMats = std::vector<pyvrp::Matrix<uint8_t>>;
 
                 ProblemData data(t[0].cast<Clients>(),
                                  t[1].cast<Depots>(),
                                  t[2].cast<VehicleTypes>(),
                                  t[3].cast<DistMats>(),
                                  t[4].cast<DurMats>(),
-                                 t[5].cast<Groups>());
+                                 t[5].cast<Groups>(),
+                                 t[6].cast<ExistsMats>());
 
                 return data;
             }));

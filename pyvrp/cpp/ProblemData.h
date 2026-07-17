@@ -39,6 +39,7 @@ enum class ClientRequired : uint8_t
  *     distance_matrices: list[numpy.ndarray[int]],
  *     duration_matrices: list[numpy.ndarray[int]],
  *     groups: list[ClientGroup] = [],
+ *     edge_exists: list[numpy.ndarray[bool]] = [],
  * )
  *
  * Creates a problem data instance. This instance contains all information
@@ -69,6 +70,11 @@ enum class ClientRequired : uint8_t
  *     List of client groups. Client groups have certain restrictions - see the
  *     definition for details. By default there are no groups, and empty groups
  *     must not be passed.
+ * edge_exists
+ *     Boolean matrices, one per routing profile, that indicate which edges
+ *     exist in the underlying network. Missing edges typically get a large
+ *     placeholder value in the distance and duration matrices; these matrices
+ *     tell the solver which edges those are. By default all edges exist.
  *
  * Raises
  * ------
@@ -606,6 +612,8 @@ private:
     std::pair<Coordinate, Coordinate> centroid_;   // Center of client locations
     std::vector<Matrix<Distance>> const dists_;    // Distance matrices
     std::vector<Matrix<Duration>> const durs_;     // Duration matrices
+    std::vector<Matrix<uint8_t>> const edgeExists_;  // Edge existence; empty
+                                                     // means all edges exist
     std::vector<Client> const clients_;            // Client information
     std::vector<Depot> const depots_;              // Depot information
     std::vector<VehicleType> const vehicleTypes_;  // Vehicle type information
@@ -734,6 +742,29 @@ public:
     durationMatrix(size_t profile) const;
 
     /**
+     * Returns the edge existence matrices of all routing profiles. When
+     * empty, all edges exist.
+     */
+    [[nodiscard]] std::vector<Matrix<uint8_t>> const &
+    edgeExistsMatrices() const;
+
+    /**
+     * Returns whether the edge between the given locations exists in the
+     * given routing profile's underlying network.
+     *
+     * Parameters
+     * ----------
+     * profile
+     *     Routing profile to query.
+     * frm
+     *     Location index the edge leaves from.
+     * to
+     *     Location index the edge arrives at.
+     */
+    [[nodiscard]] inline bool
+    edgeExists(size_t profile, size_t frm, size_t to) const;
+
+    /**
      * Determines whether any of the :meth:`~clients` or :meth:`~depots` in this
      * instance have nonstandard time windows, or if any :meth:`~vehicle_types`
      * have nonstandard shift time windows or latest start constraints.
@@ -805,19 +836,22 @@ public:
      * ProblemData
      *    A new ProblemData instance with possibly replaced data.
      */
-    ProblemData replace(std::optional<std::vector<Client>> &clients,
-                        std::optional<std::vector<Depot>> &depots,
-                        std::optional<std::vector<VehicleType>> &vehicleTypes,
-                        std::optional<std::vector<Matrix<Distance>>> &distMats,
-                        std::optional<std::vector<Matrix<Duration>>> &durMats,
-                        std::optional<std::vector<ClientGroup>> &groups) const;
+    ProblemData
+    replace(std::optional<std::vector<Client>> &clients,
+            std::optional<std::vector<Depot>> &depots,
+            std::optional<std::vector<VehicleType>> &vehicleTypes,
+            std::optional<std::vector<Matrix<Distance>>> &distMats,
+            std::optional<std::vector<Matrix<Duration>>> &durMats,
+            std::optional<std::vector<ClientGroup>> &groups,
+            std::optional<std::vector<Matrix<uint8_t>>> &edgeExists) const;
 
     ProblemData(std::vector<Client> clients,
                 std::vector<Depot> depots,
                 std::vector<VehicleType> vehicleTypes,
                 std::vector<Matrix<Distance>> distMats,
                 std::vector<Matrix<Duration>> durMats,
-                std::vector<ClientGroup> groups = {});
+                std::vector<ClientGroup> groups = {},
+                std::vector<Matrix<uint8_t>> edgeExists = {});
 
     ProblemData() = delete;
 };
@@ -844,6 +878,15 @@ Matrix<Duration> const &ProblemData::durationMatrix(size_t profile) const
 {
     assert(profile < durs_.size());
     return durs_[profile];
+}
+
+bool ProblemData::edgeExists(size_t profile, size_t frm, size_t to) const
+{
+    if (edgeExists_.empty())  // then all edges exist
+        return true;
+
+    assert(profile < edgeExists_.size());
+    return edgeExists_[profile](frm, to);
 }
 
 bool ProblemData::hasTimeWindows() const { return hasTimeWindows_; }

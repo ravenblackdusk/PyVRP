@@ -138,8 +138,32 @@ bool Solution::insert(Route::Node *U,
 {
     assert(size_t(std::distance(nodes.data(), U)) < nodes.size());
 
-    Route::Node *UAfter = routes[0][0];  // fallback option
-    auto bestCost = insertCost(U, UAfter, data_, costEvaluator);
+    // Positions that would use edges missing from the underlying network are
+    // not eligible. We track the best eligible position, and - separately -
+    // the overall best position as a last resort for required clients.
+    Route::Node *UAfter = nullptr;
+    Cost bestCost = std::numeric_limits<Cost>::max();
+    Route::Node *UAfterAny = routes[0][0];  // fallback option
+    Cost bestCostAny = insertCost(U, UAfterAny, data_, costEvaluator);
+
+    auto const consider = [&](Route::Node *V)
+    {
+        auto const cost = insertCost(U, V, data_, costEvaluator);
+
+        if (cost < bestCostAny)
+        {
+            bestCostAny = cost;
+            UAfterAny = V;
+        }
+
+        if (cost < bestCost && !insertAddsMissingEdges(U, V, data_))
+        {
+            bestCost = cost;
+            UAfter = V;
+        }
+    };
+
+    consider(routes[0][0]);
 
     // First attempt a neighbourhood search to place U into routes that are
     // already in use.
@@ -147,19 +171,12 @@ bool Solution::insert(Route::Node *U,
     {
         auto *V = &nodes[vClient];
 
-        if (!V->route())
-            continue;
-
-        auto const cost = insertCost(U, V, data_, costEvaluator);
-        if (cost < bestCost)
-        {
-            bestCost = cost;
-            UAfter = V;
-        }
+        if (V->route())
+            consider(V);
     }
 
-    // Next consider empty routes, of each vehicle type. We insert into the
-    // first improving route.
+    // Next consider empty routes, of each vehicle type. We consider the first
+    // empty route of each vehicle type.
     for (auto const &[vehType, offset] : searchSpace.vehTypeOrder())
     {
         auto const begin = routes.begin() + offset;
@@ -167,22 +184,24 @@ bool Solution::insert(Route::Node *U,
         auto const pred = [](auto const &route) { return route.empty(); };
         auto empty = std::find_if(begin, end, pred);
 
-        if (empty == end)
-            continue;
-
-        auto const cost = insertCost(U, (*empty)[0], data_, costEvaluator);
-        if (cost < bestCost)
-        {
-            bestCost = cost;
-            UAfter = (*empty)[0];
-            break;
-        }
+        if (empty != end)
+            consider((*empty)[0]);
     }
 
-    if (required || bestCost < 0)
+    if (UAfter && bestCost < 0)
     {
         auto *route = UAfter->route();
         route->insert(UAfter->idx() + 1, U);
+        return true;
+    }
+
+    if (required)
+    {
+        // Required nodes must be inserted. We prefer an eligible position,
+        // but fall back to the overall best position if there is none.
+        auto *where = UAfter ? UAfter : UAfterAny;
+        auto *route = where->route();
+        route->insert(where->idx() + 1, U);
         return true;
     }
 

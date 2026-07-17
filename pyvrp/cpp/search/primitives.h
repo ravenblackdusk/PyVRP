@@ -36,6 +36,53 @@ Cost insertCost(Route::Node *U,
                 CostEvaluator const &costEvaluator);
 
 /**
+ * Determines whether inserting U after V would increase the number of edges
+ * used that do not exist in the underlying network of V's route's profile.
+ *
+ * Parameters
+ * ----------
+ * U
+ *     Node to insert.
+ * V
+ *     Node to insert U after. Must be in a route.
+ * data
+ *     Problem data instance.
+ *
+ * Returns
+ * -------
+ * bool
+ *     True if inserting U after V uses more missing edges than the current
+ *     solution does, False otherwise.
+ */
+bool insertAddsMissingEdges(Route::Node *U,
+                            Route::Node *V,
+                            ProblemData const &data);
+
+/**
+ * Determines whether inserting U in the place of V would increase the number
+ * of edges used that do not exist in the underlying network of V's route's
+ * profile.
+ *
+ * Parameters
+ * ----------
+ * U
+ *     Node to insert. Must not be in a route.
+ * V
+ *     Node to insert U in place of. Must be in a route.
+ * data
+ *     Problem data instance.
+ *
+ * Returns
+ * -------
+ * bool
+ *     True if inserting U in place of V uses more missing edges than the
+ *     current solution does, False otherwise.
+ */
+bool inplaceAddsMissingEdges(Route::Node *U,
+                             Route::Node *V,
+                             ProblemData const &data);
+
+/**
  * Evaluates the delta cost of inserting U in the place of V. The evaluation is
  * exact.
  *

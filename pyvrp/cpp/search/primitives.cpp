@@ -70,6 +70,49 @@ pyvrp::Cost pyvrp::search::insertCost(Route::Node *U,
     return deltaCost;
 }
 
+bool pyvrp::search::insertAddsMissingEdges(Route::Node *U,
+                                           Route::Node *V,
+                                           ProblemData const &data)
+{
+    if (!V->route())
+        return false;
+
+    auto const profile = V->route()->profile();
+    auto const *W = n(V);
+
+    // Inserting U after V adds edges V -> U and U -> W, and removes the edge
+    // V -> W. The insertion is only problematic if it increases the number of
+    // missing edges used by the route.
+    auto const added = !data.edgeExists(profile, V->client(), U->client())
+                       + !data.edgeExists(profile, U->client(), W->client());
+    auto const removed = !data.edgeExists(profile, V->client(), W->client());
+
+    return added > removed;
+}
+
+bool pyvrp::search::inplaceAddsMissingEdges(Route::Node *U,
+                                            Route::Node *V,
+                                            ProblemData const &data)
+{
+    if (!V->route())
+        return false;
+
+    auto const profile = V->route()->profile();
+    auto const *prev = p(V);
+    auto const *next = n(V);
+
+    // Replacing V by U adds edges prev -> U and U -> next, and removes the
+    // edges prev -> V and V -> next.
+    auto const added
+        = !data.edgeExists(profile, prev->client(), U->client())
+          + !data.edgeExists(profile, U->client(), next->client());
+    auto const removed
+        = !data.edgeExists(profile, prev->client(), V->client())
+          + !data.edgeExists(profile, V->client(), next->client());
+
+    return added > removed;
+}
+
 pyvrp::Cost pyvrp::search::removeCost(Route::Node *U,
                                       ProblemData const &data,
                                       CostEvaluator const &costEvaluator)

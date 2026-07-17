@@ -530,6 +530,11 @@ std::vector<Matrix<Duration>> const &ProblemData::durationMatrices() const
     return durs_;
 }
 
+std::vector<Matrix<uint8_t>> const &ProblemData::edgeExistsMatrices() const
+{
+    return edgeExists_;
+}
+
 ProblemData::ClientGroup const &ProblemData::group(size_t group) const
 {
     assert(group < groups_.size());
@@ -702,22 +707,40 @@ void ProblemData::validate() const
                                             "all zero.");
         }
     }
+
+    // Edge existence checks. An empty vector means all edges exist.
+    if (!edgeExists_.empty())
+    {
+        if (edgeExists_.size() != dists_.size())
+            throw std::invalid_argument("Expected one edge existence matrix "
+                                        "per routing profile.");
+
+        for (auto const &exists : edgeExists_)
+        {
+            auto const numLocs = numLocations();
+            if (exists.numRows() != numLocs || exists.numCols() != numLocs)
+                throw std::invalid_argument("Edge existence matrix shape does "
+                                            "not match the problem size.");
+        }
+    }
 }
 
-ProblemData
-ProblemData::replace(std::optional<std::vector<Client>> &clients,
-                     std::optional<std::vector<Depot>> &depots,
-                     std::optional<std::vector<VehicleType>> &vehicleTypes,
-                     std::optional<std::vector<Matrix<Distance>>> &distMats,
-                     std::optional<std::vector<Matrix<Duration>>> &durMats,
-                     std::optional<std::vector<ClientGroup>> &groups) const
+ProblemData ProblemData::replace(
+    std::optional<std::vector<Client>> &clients,
+    std::optional<std::vector<Depot>> &depots,
+    std::optional<std::vector<VehicleType>> &vehicleTypes,
+    std::optional<std::vector<Matrix<Distance>>> &distMats,
+    std::optional<std::vector<Matrix<Duration>>> &durMats,
+    std::optional<std::vector<ClientGroup>> &groups,
+    std::optional<std::vector<Matrix<uint8_t>>> &edgeExists) const
 {
     return {clients.value_or(clients_),
             depots.value_or(depots_),
             vehicleTypes.value_or(vehicleTypes_),
             distMats.value_or(dists_),
             durMats.value_or(durs_),
-            groups.value_or(groups_)};
+            groups.value_or(groups_),
+            edgeExists.value_or(edgeExists_)};
 }
 
 ProblemData::ProblemData(std::vector<Client> clients,
@@ -725,9 +748,11 @@ ProblemData::ProblemData(std::vector<Client> clients,
                          std::vector<VehicleType> vehicleTypes,
                          std::vector<Matrix<Distance>> distMats,
                          std::vector<Matrix<Duration>> durMats,
-                         std::vector<ClientGroup> groups)
+                         std::vector<ClientGroup> groups,
+                         std::vector<Matrix<uint8_t>> edgeExists)
     : dists_(std::move(distMats)),
       durs_(std::move(durMats)),
+      edgeExists_(std::move(edgeExists)),
       clients_(std::move(clients)),
       depots_(std::move(depots)),
       vehicleTypes_(std::move(vehicleTypes)),
