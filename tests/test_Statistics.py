@@ -128,7 +128,7 @@ def test_iterating_over_statistics_returns_data(ok_small):
 
     sol = Solution(ok_small, [[1, 2], [3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
-    cost = cost_eval.penalised_cost(sol)
+    cost = int(cost_eval.penalised_cost(sol))
 
     stats.collect(sol, sol, sol, cost_eval)
     stats.collect(sol, sol, sol, cost_eval)

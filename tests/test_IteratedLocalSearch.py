@@ -2,6 +2,7 @@ from numpy.testing import assert_, assert_equal, assert_raises
 from pytest import mark
 
 from pyvrp import (
+    Cost,
     IteratedLocalSearch,
     IteratedLocalSearchParams,
     PenaltyManager,
@@ -123,7 +124,7 @@ def test_ils_result_has_correct_stats(ok_small):
     assert_equal(result.stats.num_iterations, 10)
 
     datum = result.stats.data[0]
-    assert_equal(datum.current_cost, pm.cost_evaluator().penalised_cost(init))
+    assert_equal(datum.current_cost, int(pm.cost_evaluator().penalised_cost(init)))
     assert_equal(datum.current_feas, init.is_feasible())
 
 
@@ -256,4 +257,4 @@ def test_exhaustive_search_on_new_best_solution(ok_small):
     # an exhaustive search that returns the final solution.
     res = ils.run(MaxIterations(2))
     assert_equal(len(sols), 0)
-    assert_equal(res.cost(), 9_240)
+    assert_equal(res.cost(), Cost(9_240))

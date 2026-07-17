@@ -733,10 +733,10 @@ def test_local_search_inserts_into_empty_solutions():
 
     empty = Solution(data, [])
     assert_equal(empty.num_clients(), 0)
-    assert_equal(empty.uncollected_prizes(), 2_000)
+    assert_equal(empty.uncollected_prizes(), Cost(2_000))
 
     # Start from the empty solution and check that the improved solution is no
     # longer empty - the local search should have inserted the missing clients.
     sol = ls(empty, cost_eval, exhaustive=True)
     assert_equal(sol.num_clients(), 2)
-    assert_equal(sol.uncollected_prizes(), 0)
+    assert_equal(sol.uncollected_prizes(), Cost(0))

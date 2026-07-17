@@ -426,7 +426,7 @@ def test_max_cost_evaluator(ok_small_multiple_load):
     cost_eval = pm.max_cost_evaluator()
 
     for idx in range(ok_small_multiple_load.num_load_dimensions):
-        assert_equal(cost_eval.load_penalty(1, 0, idx), max_penalty)
+        assert_equal(cost_eval.load_penalty(1, 0, idx), Cost(max_penalty))
 
-    assert_equal(cost_eval.tw_penalty(1), max_penalty)
-    assert_equal(cost_eval.dist_penalty(1, 0), max_penalty)
+    assert_equal(cost_eval.tw_penalty(1), Cost(max_penalty))
+    assert_equal(cost_eval.dist_penalty(1, 0), Cost(max_penalty))

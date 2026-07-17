@@ -53,53 +53,35 @@ class Cost:
 
     # --- comparison (lexicographic, Cost-vs-Cost only) -----------------------
 
-    @staticmethod
-    def _key(other):
-        """
-        Comparison key: plain numbers are treated as a Cost with zero missing
-        soft-required clients.
-        """
-        if isinstance(other, Cost):
-            return (other._msr, other._cost)
-        if isinstance(other, numbers.Real):
-            return (0, other)
-        return None
-
     def __eq__(self, other):
-        key = Cost._key(other)
-        if key is None:
-            return NotImplemented
-        return (self._msr, self._cost) == key
+        if isinstance(other, Cost):
+            return (self._msr, self._cost) == (other._msr, other._cost)
+        return NotImplemented
 
     def __ne__(self, other):
-        key = Cost._key(other)
-        if key is None:
-            return NotImplemented
-        return (self._msr, self._cost) != key
+        if isinstance(other, Cost):
+            return (self._msr, self._cost) != (other._msr, other._cost)
+        return NotImplemented
 
     def __lt__(self, other):
-        key = Cost._key(other)
-        if key is None:
-            return NotImplemented
-        return (self._msr, self._cost) < key
+        if isinstance(other, Cost):
+            return (self._msr, self._cost) < (other._msr, other._cost)
+        return NotImplemented
 
     def __le__(self, other):
-        key = Cost._key(other)
-        if key is None:
-            return NotImplemented
-        return (self._msr, self._cost) <= key
+        if isinstance(other, Cost):
+            return (self._msr, self._cost) <= (other._msr, other._cost)
+        return NotImplemented
 
     def __gt__(self, other):
-        key = Cost._key(other)
-        if key is None:
-            return NotImplemented
-        return (self._msr, self._cost) > key
+        if isinstance(other, Cost):
+            return (self._msr, self._cost) > (other._msr, other._cost)
+        return NotImplemented
 
     def __ge__(self, other):
-        key = Cost._key(other)
-        if key is None:
-            return NotImplemented
-        return (self._msr, self._cost) >= key
+        if isinstance(other, Cost):
+            return (self._msr, self._cost) >= (other._msr, other._cost)
+        return NotImplemented
 
     # --- arithmetic (delegates to cost component, returns plain numbers) -----
 
@@ -144,10 +126,6 @@ class Cost:
     # --- misc ----------------------------------------------------------------
 
     def __hash__(self):
-        # A Cost without missing soft-required clients compares equal to its
-        # plain cost value, so it must also hash like it.
-        if self._msr == 0:
-            return hash(self._cost)
         return hash((self._msr, self._cost))
 
     def __reduce__(self):

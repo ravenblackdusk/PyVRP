@@ -352,7 +352,7 @@ def test_depot_service_duration(ok_small_multiple_trips):
 
     # The reload depot removes excess load (improvement of -8_000) but adds 200
     # extra service duration at the depot. So the overall delta cost is -7_800.
-    assert_equal(op.evaluate(route[1], route[3], cost_eval), -7_800)
+    assert_equal(op.evaluate(route[1], route[3], cost_eval), Cost(-7_800))
 
     op.apply(route[1], route[3])
     route.update()
