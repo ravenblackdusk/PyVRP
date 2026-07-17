@@ -305,14 +305,20 @@ inline Cost &Cost::operator*=(Cost const rhs)
     [[maybe_unused]] int64_t res = 0;
     assert(!__builtin_mul_overflow(cost_, rhs.cost_, &res));
 
-    missingSoftRequired_ *= rhs.missingSoftRequired_;
+    // Multiplication is scalar scaling: at most one operand may carry a
+    // missing soft-required component; the other scales it.
+    assert(missingSoftRequired_ == 0 || rhs.missingSoftRequired_ == 0);
+    missingSoftRequired_ = missingSoftRequired_ * rhs.cost_
+                           + rhs.missingSoftRequired_ * cost_;
     cost_ *= rhs.cost_;
     return *this;
 }
 
 inline Cost &Cost::operator/=(Cost const rhs)
 {
-    missingSoftRequired_ /= rhs.missingSoftRequired_;
+    // Division is only defined by a scalar (no missing soft-required part).
+    assert(rhs.missingSoftRequired_ == 0 && rhs.cost_ != 0);
+    missingSoftRequired_ /= rhs.cost_;
     cost_ /= rhs.cost_;
     return *this;
 }
@@ -358,19 +364,16 @@ inline Cost operator-(Cost const lhs)
     return Cost(-lhs.missingSoftRequired(), -lhs.get());
 }
 
-inline Cost operator*(Cost const lhs, Cost const rhs)
+inline Cost operator*(Cost lhs, Cost const rhs)
 {
-    [[maybe_unused]] int64_t res = 0;
-    assert(!__builtin_mul_overflow(lhs.get(), rhs.get(), &res));
-
-    return Cost(lhs.missingSoftRequired() * rhs.missingSoftRequired(),
-                lhs.get() * rhs.get());
+    lhs *= rhs;
+    return lhs;
 }
 
-inline Cost operator/(Cost const lhs, Cost const rhs)
+inline Cost operator/(Cost lhs, Cost const rhs)
 {
-    return Cost(lhs.missingSoftRequired() / rhs.missingSoftRequired(),
-                lhs.get() / rhs.get());
+    lhs /= rhs;
+    return lhs;
 }
 }  // namespace pyvrp
 
