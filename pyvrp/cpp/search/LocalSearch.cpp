@@ -305,12 +305,16 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
     if (U->route())
         return;
 
-    // SOFT clients use `insert()` which searches all neighbours and the
-    // first route's depot as fallback. The compound Cost type ensures the
-    // insert cost is always negative (missingSoftRequired decreases).
+    // The compound Cost type makes inserting a SOFT client always improving
+    // (missingSoftRequired decreases), so this inserts U at its best position
+    // across neighbours and empty routes.
     if (uData.required == pyvrp::ClientRequired::SOFT)
     {
-        insert(U, costEvaluator, false);
+        if (solution_.insert(U, searchSpace_, costEvaluator, false))
+        {
+            update(U->route(), U->route());
+            searchSpace_.markPromising(U);
+        }
         return;
     }
 

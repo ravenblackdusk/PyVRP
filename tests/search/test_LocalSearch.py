@@ -717,8 +717,8 @@ def test_local_search_inserts_into_empty_solutions():
     """
     data = ProblemData(
         clients=[
-            Client(0, 0, prize=1_000, required=False),  # high prizes make
-            Client(0, 0, prize=1_000, required=False),  # inserting worthwhile
+            Client(0, 0, prize=1_000, required=ClientRequired.NO),  # high prizes make
+            Client(0, 0, prize=1_000, required=ClientRequired.NO),  # inserting worthwhile
         ],
         depots=[Depot(0, 0)],
         vehicle_types=[VehicleType()],
