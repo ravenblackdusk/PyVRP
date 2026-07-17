@@ -232,6 +232,19 @@ Route::Route(ProblemData const &data, Trips trips, size_t vehType)
     distanceCost_ = vehData.unitDistanceCost * Cost(distance_.get());
     excessDistance_ = std::max<Distance>(distance_ - vehData.maxDistance, 0);
 
+    for (auto const &trip : trips_)  // count edges missing from the network
+    {
+        size_t prev = trip.startDepot();
+        for (auto const client : trip.visits())
+        {
+            numMissingEdges_ += !data.edgeExists(vehData.profile, prev, client);
+            prev = client;
+        }
+
+        numMissingEdges_
+            += !data.edgeExists(vehData.profile, prev, trip.endDepot());
+    }
+
     for (size_t idx = 0; idx != trips_.size(); ++idx)  // load statistics
     {
         auto const &trip = trips_[idx];
@@ -301,6 +314,7 @@ Route::Route(Trips trips,
              Distance distance,
              Cost distanceCost,
              Distance excessDistance,
+             size_t numMissingEdges,
              std::vector<Load> delivery,
              std::vector<Load> pickup,
              std::vector<Load> excessLoad,
@@ -322,6 +336,7 @@ Route::Route(Trips trips,
       schedule_(std::move(schedule)),
       distance_(distance),
       distanceCost_(distanceCost),
+      numMissingEdges_(numMissingEdges),
       excessDistance_(excessDistance),
       delivery_(std::move(delivery)),
       pickup_(std::move(pickup)),
@@ -434,8 +449,13 @@ size_t Route::endDepot() const { return endDepot_; }
 
 bool Route::isFeasible() const
 {
-    return !hasExcessLoad() && !hasTimeWarp() && !hasExcessDistance();
+    return !hasExcessLoad() && !hasTimeWarp() && !hasExcessDistance()
+           && !hasMissingEdges();
 }
+
+size_t Route::numMissingEdges() const { return numMissingEdges_; }
+
+bool Route::hasMissingEdges() const { return numMissingEdges_ > 0; }
 
 bool Route::hasExcessLoad() const
 {

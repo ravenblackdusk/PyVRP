@@ -262,3 +262,43 @@ def test_data_edge_exists_roundtrips():
 
     replaced = data.replace()
     assert_(not replaced.edge_exists(0, 0, 2))
+
+
+def test_route_with_missing_edge_is_infeasible():
+    """
+    Tests that routes and solutions using edges missing from the underlying
+    network are infeasible, even when no other constraint is violated.
+    """
+    from pyvrp import Route
+
+    data = _sparse_model(ClientRequired.HARD).data()
+
+    # Client 1 is reachable: no missing edges, and feasible.
+    good = Route(data, [1], vehicle_type=0)
+    assert_equal(good.num_missing_edges(), 0)
+    assert_(not good.has_missing_edges())
+    assert_(good.is_feasible())
+
+    # Client 2 is only reachable via missing edges (depot -> 2 -> depot).
+    bad = Route(data, [2], vehicle_type=0)
+    assert_equal(bad.num_missing_edges(), 2)
+    assert_(bad.has_missing_edges())
+    assert_(not bad.is_feasible())
+
+    solution = Solution(data, [[1], [2]])
+    assert_equal(solution.num_missing_edges(), 2)
+    assert_(solution.has_missing_edges())
+    assert_(not solution.is_feasible())
+
+
+def test_unreachable_hard_client_makes_run_infeasible():
+    """
+    Tests that a HARD client only reachable via missing edges results in an
+    infeasible run: it must be visited, but no valid route can serve it.
+    """
+    res = _sparse_model(ClientRequired.HARD).solve(
+        stop=MaxIterations(20), seed=4, display=False
+    )
+
+    assert_(not res.is_feasible())
+    assert_(res.best.has_missing_edges())

@@ -36,6 +36,7 @@ void Solution::evaluate(ProblemData const &data)
         overtime_ += route.overtime();
         durationCost_ += route.durationCost();
         excessDistance_ += route.excessDistance();
+        numMissingEdges_ += route.numMissingEdges();
         timeWarp_ += route.timeWarp();
         fixedVehicleCost_ += data.vehicleType(route.vehicleType()).fixedCost;
 
@@ -74,6 +75,7 @@ bool Solution::isFeasible() const
     return !hasExcessLoad()
         && !hasTimeWarp()
         && !hasExcessDistance()
+        && !hasMissingEdges()
         && isComplete()
         && isGroupFeasible();
     // clang-format on
@@ -82,6 +84,10 @@ bool Solution::isFeasible() const
 bool Solution::isGroupFeasible() const { return isGroupFeas_; }
 
 bool Solution::isComplete() const { return numMissingClients_ == 0; }
+
+size_t Solution::numMissingEdges() const { return numMissingEdges_; }
+
+bool Solution::hasMissingEdges() const { return numMissingEdges_ > 0; }
 
 bool Solution::hasExcessLoad() const
 {
@@ -292,6 +298,7 @@ Solution::Solution(ProblemData const &data, std::vector<Route> routes)
 
 Solution::Solution(size_t numClients,
                    size_t numMissingClients,
+                   size_t numMissingEdges,
                    Distance distance,
                    Cost distanceCost,
                    Duration duration,
@@ -308,6 +315,7 @@ Solution::Solution(size_t numClients,
                    Neighbours neighbours)
     : numClients_(numClients),
       numMissingClients_(numMissingClients),
+      numMissingEdges_(numMissingEdges),
       distance_(distance),
       distanceCost_(distanceCost),
       duration_(duration),

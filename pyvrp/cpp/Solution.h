@@ -47,6 +47,7 @@ class Solution
 
     size_t numClients_ = 0;         // Number of clients in the solution
     size_t numMissingClients_ = 0;  // Number of required but missing clients
+    size_t numMissingEdges_ = 0;    // Number of used edges that do not exist
     Distance distance_ = 0;         // Total travel distance over all routes
     Cost distanceCost_ = 0;         // Total cost of all routes' travel distance
     Duration duration_ = 0;         // Total duration over all routes
@@ -132,6 +133,18 @@ public:
      * Whether this solution is feasible.
      */
     [[nodiscard]] bool isFeasible() const;
+
+    /**
+     * Number of edges used by this solution's routes that do not exist in
+     * the underlying network. A solution using missing edges is infeasible.
+     */
+    [[nodiscard]] size_t numMissingEdges() const;
+
+    /**
+     * Returns whether this solution uses edges that do not exist in the
+     * underlying network.
+     */
+    [[nodiscard]] bool hasMissingEdges() const;
 
     /**
      * Returns whether this solution is feasible w.r.t. the client group
@@ -260,6 +273,7 @@ public:
     // This constructor does *no* validation. Useful when unserialising objects.
     Solution(size_t numClients,
              size_t numMissingClients,
+             size_t numMissingEdges,
              Distance distance,
              Cost distanceCost,
              Duration duration,

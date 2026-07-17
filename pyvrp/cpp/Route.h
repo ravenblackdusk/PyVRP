@@ -111,6 +111,7 @@ private:
     std::vector<ScheduledVisit> schedule_ = {};  // Client visit schedule data
     Distance distance_ = 0;        // Total travel distance on this route
     Cost distanceCost_ = 0;        // Total cost of travel distance
+    size_t numMissingEdges_ = 0;   // Number of used edges that do not exist
     Distance excessDistance_ = 0;  // Excess travel distance
     std::vector<Load> delivery_;   // Total delivery amount served on this route
     std::vector<Load> pickup_;     // Total pickup amount gathered on this route
@@ -310,6 +311,18 @@ public:
     [[nodiscard]] bool isFeasible() const;
 
     /**
+     * Number of edges on this route that do not exist in the underlying
+     * network. A route using missing edges is infeasible.
+     */
+    [[nodiscard]] size_t numMissingEdges() const;
+
+    /**
+     * Returns whether this route uses edges that do not exist in the
+     * underlying network.
+     */
+    [[nodiscard]] bool hasMissingEdges() const;
+
+    /**
      * Returns whether this route violates capacity constraints.
      */
     [[nodiscard]] bool hasExcessLoad() const;
@@ -344,6 +357,7 @@ public:
           Distance distance,
           Cost distanceCost,
           Distance excessDistance,
+          size_t numMissingEdges,
           std::vector<Load> delivery,
           std::vector<Load> pickup,
           std::vector<Load> excessLoad,
