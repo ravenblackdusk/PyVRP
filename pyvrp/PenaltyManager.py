@@ -56,6 +56,12 @@ class PenaltyParams:
         .. warning::
            Setting a (too) large maximum penalty value may cause integer
            overflow in PyVRP's native extensions.
+    min_missing_soft_penalty
+        Minimum value of the missing soft-required client penalty. The
+        adaptive penalty never drops below this value, and also starts no
+        lower. Set this (possibly equal to ``max_missing_soft_penalty``) to
+        keep constant pressure to serve soft-required clients when the
+        iteration budget is too small for the adaptive ramp-up.
     max_missing_soft_penalty
         Maximum value of the missing soft-required client penalty. This value
         determines how strongly the solver insists on serving soft-required
@@ -96,6 +102,7 @@ class PenaltyParams:
     feas_tolerance: float = 0.05
     min_penalty: float = 0.1
     max_penalty: float = 100_000.0
+    min_missing_soft_penalty: float | None = None
     max_missing_soft_penalty: float | None = None
 
     def __post_init__(self):
@@ -120,12 +127,20 @@ class PenaltyParams:
         if self.max_penalty < self.min_penalty:
             raise ValueError("Expected max_penalty >= min_penalty.")
 
+        min_soft = (
+            self.min_missing_soft_penalty
+            if self.min_missing_soft_penalty is not None
+            else self.min_penalty
+        )
+        if min_soft < 0:
+            raise ValueError("Expected min_missing_soft_penalty >= 0.")
+
         if (
             self.max_missing_soft_penalty is not None
-            and self.max_missing_soft_penalty < self.min_penalty
+            and self.max_missing_soft_penalty < min_soft
         ):
             raise ValueError(
-                "Expected max_missing_soft_penalty >= min_penalty."
+                "Expected max_missing_soft_penalty >= its minimum."
             )
 
 
@@ -174,6 +189,11 @@ class PenaltyManager:
             max_missing_soft_penalty = params.max_penalty
 
         self._max_missing_soft_penalty = max_missing_soft_penalty
+        self._min_missing_soft_penalty = (
+            params.min_missing_soft_penalty
+            if params.min_missing_soft_penalty is not None
+            else params.min_penalty
+        )
 
         *loads, tw, dist, soft = np.asarray(
             initial_penalties[0] + list(initial_penalties[1:])
@@ -183,7 +203,11 @@ class PenaltyManager:
                 *np.clip(loads, params.min_penalty, params.max_penalty),
                 np.clip(tw, params.min_penalty, params.max_penalty),
                 np.clip(dist, params.min_penalty, params.max_penalty),
-                np.clip(soft, params.min_penalty, max_missing_soft_penalty),
+                np.clip(
+                    soft,
+                    self._min_missing_soft_penalty,
+                    max_missing_soft_penalty,
+                ),
             ]
         )
 
@@ -282,12 +306,13 @@ class PenaltyManager:
             (init_load.tolist(), init_tw, init_dist, min(init_soft, max_soft)),
             params,
             max_missing_soft_penalty=max_soft,
-        )
+        )  # the constructor clips the initial value to the soft bounds
 
     def _compute(
         self,
         penalty: float,
         feas_percentage: float,
+        min_penalty: float,
         max_penalty: float,
     ) -> float:
         # Computes and returns the new penalty value, given the current value
@@ -312,13 +337,14 @@ class PenaltyManager:
             """
             warn(msg, PenaltyBoundWarning)
 
-        return np.clip(new_penalty, self._params.min_penalty, max_penalty)
+        return np.clip(new_penalty, min_penalty, max_penalty)
 
     def _register(
         self,
         feas_list: list[bool],
         penalty: float,
         is_feas: bool,
+        min_penalty: float,
         max_penalty: float,
     ):
         feas_list.append(is_feas)
@@ -328,7 +354,7 @@ class PenaltyManager:
 
         avg = fmean(feas_list)
         feas_list.clear()
-        return self._compute(penalty, avg, max_penalty)
+        return self._compute(penalty, avg, min_penalty, max_penalty)
 
     def register(self, sol: Solution):
         """
@@ -344,13 +370,19 @@ class PenaltyManager:
         for idx, is_feas in enumerate(is_feasible):
             feas_list = self._feas_lists[idx]
             penalty = self._penalties[idx]
+            is_soft = idx == len(is_feasible) - 1
+            min_penalty = (
+                self._min_missing_soft_penalty
+                if is_soft
+                else self._params.min_penalty
+            )
             max_penalty = (
                 self._max_missing_soft_penalty
-                if idx == len(is_feasible) - 1
+                if is_soft
                 else self._params.max_penalty
             )
             self._penalties[idx] = self._register(
-                feas_list, penalty, is_feas, max_penalty
+                feas_list, penalty, is_feas, min_penalty, max_penalty
             )
 
     def cost_evaluator(self) -> CostEvaluator:
