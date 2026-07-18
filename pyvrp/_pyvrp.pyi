@@ -14,7 +14,10 @@ class CostEvaluator:
         load_penalties: list[float],
         tw_penalty: float,
         dist_penalty: float,
+        missing_soft_penalty: float = 0.0,
+        max_missing_soft_penalty: float = 0.0,
     ) -> None: ...
+    def missing_soft_penalty(self, num_missing_soft: int) -> int: ...
     def load_penalty(
         self, load: int, capacity: int, dimension: int
     ) -> int: ...

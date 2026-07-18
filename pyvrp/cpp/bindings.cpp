@@ -993,16 +993,22 @@ PYBIND11_MODULE(_pyvrp, m)
              });
 
     py::class_<CostEvaluator>(m, "CostEvaluator", DOC(pyvrp, CostEvaluator))
-        .def(py::init<std::vector<double>, double, double>(),
+        .def(py::init<std::vector<double>, double, double, double, double>(),
              py::arg("load_penalties"),
              py::arg("tw_penalty"),
-             py::arg("dist_penalty"))
+             py::arg("dist_penalty"),
+             py::arg("missing_soft_penalty") = 0.0,
+             py::arg("max_missing_soft_penalty") = 0.0)
         .def("load_penalty",
              &CostEvaluator::loadPenalty,
              py::arg("load"),
              py::arg("capacity"),
              py::arg("dimension"),
              DOC(pyvrp, CostEvaluator, loadPenalty))
+        .def("missing_soft_penalty",
+             &CostEvaluator::missingSoftPenalty,
+             py::arg("num_missing_soft"),
+             DOC(pyvrp, CostEvaluator, missingSoftPenalty))
         .def("tw_penalty",
              &CostEvaluator::twPenalty,
              py::arg("time_warp"),

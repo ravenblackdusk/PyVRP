@@ -128,23 +128,45 @@ class PenaltyManager:
     ----------
     initial_penalties
         Initial penalty values for units of load (idx 0), duration (1), and
-        distance (2) violations. These values are clipped to the range
+        distance (2) violations, and for each missing soft-required client
+        (3). These values are clipped to the range
         [:attr:`~pyvrp.PenaltyManager.PenaltyParams.min_penalty`,
-        :attr:`~pyvrp.PenaltyManager.PenaltyParams.max_penalty`].
+        :attr:`~pyvrp.PenaltyManager.PenaltyParams.max_penalty`], where the
+        missing soft-required penalty uses ``max_missing_soft_penalty`` as
+        its upper bound instead.
     params
         PenaltyManager parameters. If not provided, a default will be used.
+    max_missing_soft_penalty
+        Maximum value of the missing soft-required penalty. This should be
+        set well above the monetary cost a solution could save by dropping a
+        single client, so that a missing soft-required client is never
+        preferred over such savings in the final solution ranking. When not
+        provided, ``params.max_penalty`` is used.
     """
 
     def __init__(
         self,
-        initial_penalties: tuple[list[float], float, float],
+        initial_penalties: tuple[list[float], float, float, float],
         params: PenaltyParams = PenaltyParams(),
+        max_missing_soft_penalty: float | None = None,
     ):
         self._params = params
-        self._penalties = np.clip(
-            initial_penalties[0] + list(initial_penalties[1:]),
-            params.min_penalty,
-            params.max_penalty,
+
+        if max_missing_soft_penalty is None:
+            max_missing_soft_penalty = params.max_penalty
+
+        self._max_missing_soft_penalty = max_missing_soft_penalty
+
+        *loads, tw, dist, soft = np.asarray(
+            initial_penalties[0] + list(initial_penalties[1:])
+        )
+        self._penalties = np.array(
+            [
+                *np.clip(loads, params.min_penalty, params.max_penalty),
+                np.clip(tw, params.min_penalty, params.max_penalty),
+                np.clip(dist, params.min_penalty, params.max_penalty),
+                np.clip(soft, params.min_penalty, max_missing_soft_penalty),
+            ]
         )
 
         # Tracks recent feasibilities for each penalty dimension.
@@ -152,14 +174,15 @@ class PenaltyManager:
             [] for _ in range(len(self._penalties))
         ]
 
-    def penalties(self) -> tuple[list[float], float, float]:
+    def penalties(self) -> tuple[list[float], float, float, float]:
         """
         Returns the current penalty values.
         """
         return (
-            self._penalties[:-2].tolist(),  # loads
-            self._penalties[-2],  # duration
-            self._penalties[-1],  # distance
+            self._penalties[:-3].tolist(),  # loads
+            self._penalties[-3],  # duration
+            self._penalties[-2],  # distance
+            self._penalties[-1],  # missing soft-required
         )
 
     @classmethod
@@ -218,9 +241,28 @@ class PenaltyManager:
         init_load = avg_cost / np.maximum(avg_load, 1)
         init_tw = avg_cost / max(avg_duration, 1)
         init_dist = avg_cost / max(avg_distance, 1)
-        return cls((init_load.tolist(), init_tw, init_dist), params)
 
-    def _compute(self, penalty: float, feas_percentage: float) -> float:
+        # A missing soft-required client initially weighs about as much as
+        # the average detour of serving a client: two average edges. Its
+        # maximum weight must exceed any monetary amount a solution could
+        # save by dropping a single client, which is bounded by the worst
+        # possible detour plus the largest fixed vehicle cost.
+        init_soft = 2 * avg_cost
+        max_fixed = max((v.fixed_cost for v in data.vehicle_types()), default=0)
+        max_soft = 2 * (edge_costs.max() + 1) + max_fixed
+
+        return cls(
+            (init_load.tolist(), init_tw, init_dist, init_soft),
+            params,
+            max_missing_soft_penalty=max_soft,
+        )
+
+    def _compute(
+        self,
+        penalty: float,
+        feas_percentage: float,
+        max_penalty: float,
+    ) -> float:
         # Computes and returns the new penalty value, given the current value
         # and the percentage of feasible solutions since the last update.
         diff = self._params.target_feasible - feas_percentage
@@ -233,7 +275,7 @@ class PenaltyManager:
         else:
             new_penalty = self._params.penalty_decrease * penalty
 
-        if new_penalty >= self._params.max_penalty:
+        if new_penalty >= max_penalty:
             msg = """
             A penalty parameter has reached its maximum value. This means PyVRP
             struggles to find a feasible solution for this instance, either
@@ -243,13 +285,15 @@ class PenaltyManager:
             """
             warn(msg, PenaltyBoundWarning)
 
-        return np.clip(
-            new_penalty,
-            self._params.min_penalty,
-            self._params.max_penalty,
-        )
+        return np.clip(new_penalty, self._params.min_penalty, max_penalty)
 
-    def _register(self, feas_list: list[bool], penalty: float, is_feas: bool):
+    def _register(
+        self,
+        feas_list: list[bool],
+        penalty: float,
+        is_feas: bool,
+        max_penalty: float,
+    ):
         feas_list.append(is_feas)
 
         if len(feas_list) != self._params.solutions_between_updates:
@@ -257,7 +301,7 @@ class PenaltyManager:
 
         avg = fmean(feas_list)
         feas_list.clear()
-        return self._compute(penalty, avg)
+        return self._compute(penalty, avg, max_penalty)
 
     def register(self, sol: Solution):
         """
@@ -267,24 +311,35 @@ class PenaltyManager:
             *[excess == 0 for excess in sol.excess_load()],
             not sol.has_time_warp(),
             not sol.has_excess_distance(),
+            sol.num_missing_soft() == 0,
         ]
 
         for idx, is_feas in enumerate(is_feasible):
             feas_list = self._feas_lists[idx]
             penalty = self._penalties[idx]
-            self._penalties[idx] = self._register(feas_list, penalty, is_feas)
+            max_penalty = (
+                self._max_missing_soft_penalty
+                if idx == len(is_feasible) - 1
+                else self._params.max_penalty
+            )
+            self._penalties[idx] = self._register(
+                feas_list, penalty, is_feas, max_penalty
+            )
 
     def cost_evaluator(self) -> CostEvaluator:
         """
         Get a cost evaluator using the current penalty values.
         """
-        *loads, tw, dist = self._penalties
-        return CostEvaluator(loads, tw, dist)
+        *loads, tw, dist, soft = self._penalties
+        return CostEvaluator(
+            loads, tw, dist, soft, self._max_missing_soft_penalty
+        )
 
     def max_cost_evaluator(self) -> CostEvaluator:
         """
         Get a cost evaluator using the maximum penalty value.
         """
         penalties = np.full_like(self._penalties, self._params.max_penalty)
-        *loads, tw, dist = penalties
-        return CostEvaluator(loads, tw, dist)
+        *loads, tw, dist, _ = penalties
+        soft = self._max_missing_soft_penalty
+        return CostEvaluator(loads, tw, dist, soft, soft)

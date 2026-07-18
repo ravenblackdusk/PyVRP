@@ -58,8 +58,9 @@ pyvrp::Cost pyvrp::search::insertCost(Route::Node *U,
     auto *route = V->route();
     ProblemData::Client const &client = data.location(U->client());
 
-    Cost deltaCost
-        = Cost(route->empty()) * route->fixedVehicleCost() - client.prize;
+    auto const isSoft = client.required == pyvrp::ClientRequired::SOFT;
+    Cost deltaCost = Cost(route->empty()) * route->fixedVehicleCost()
+                     - client.prize - costEvaluator.missingSoftPenalty(isSoft);
 
     costEvaluator.deltaCost<true>(
         deltaCost,
@@ -83,8 +84,9 @@ pyvrp::Cost pyvrp::search::removeCost(Route::Node *U,
     if (!U->isDepot())
     {
         ProblemData::Client const &client = data.location(U->client());
+        auto const isSoft = client.required == pyvrp::ClientRequired::SOFT;
         deltaCost
-            = client.prize
+            = client.prize + costEvaluator.missingSoftPenalty(isSoft)
               - Cost(route->numClients() == 1) * route->fixedVehicleCost();
     }
 
@@ -107,7 +109,10 @@ pyvrp::Cost pyvrp::search::inplaceCost(Route::Node *U,
     ProblemData::Client const &uClient = data.location(U->client());
     ProblemData::Client const &vClient = data.location(V->client());
 
-    Cost deltaCost = vClient.prize - uClient.prize;
+    auto const uSoft = uClient.required == pyvrp::ClientRequired::SOFT;
+    auto const vSoft = vClient.required == pyvrp::ClientRequired::SOFT;
+    Cost deltaCost = vClient.prize + costEvaluator.missingSoftPenalty(vSoft)
+                     - uClient.prize - costEvaluator.missingSoftPenalty(uSoft);
 
     costEvaluator.deltaCost<true>(
         deltaCost,

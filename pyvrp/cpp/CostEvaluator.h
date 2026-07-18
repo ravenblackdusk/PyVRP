@@ -33,6 +33,7 @@ concept CostEvaluatable = requires(T arg) {
 template <typename T>
 concept PrizeCostEvaluatable = CostEvaluatable<T> && requires(T arg) {
     { arg.uncollectedPrizes() } -> std::same_as<Cost>;
+    { arg.numMissingSoft() } -> std::same_as<size_t>;
 };
 
 // The following methods must be available before a type's delta cost can be
@@ -50,6 +51,8 @@ concept DeltaCostEvaluatable = requires(T arg, size_t dimension) {
  *     load_penalties: list[float],
  *     tw_penalty: float,
  *     dist_penalty: float,
+ *     missing_soft_penalty: float = 0,
+ *     max_missing_soft_penalty: float = 0,
  * )
  *
  * Creates a CostEvaluator instance.
@@ -67,6 +70,14 @@ concept DeltaCostEvaluatable = requires(T arg, size_t dimension) {
  * dist_penalty
  *    The penalty for each unit of distance in excess of the vehicle's maximum
  *    distance constraint.
+ * missing_soft_penalty
+ *    The penalty for each soft-required client that is not in the solution.
+ *    This value guides the search; see also ``max_missing_soft_penalty``.
+ * max_missing_soft_penalty
+ *    The maximum value the missing soft-required penalty can take. This value
+ *    is used when comparing complete solutions in :meth:`~cost`, so that the
+ *    ranking of solutions by missing soft-required clients does not depend on
+ *    the current ``missing_soft_penalty``.
  *
  * Raises
  * ------
@@ -78,6 +89,8 @@ class CostEvaluator
     std::vector<double> loadPenalties_;  // per load dimension
     double twPenalty_;
     double distPenalty_;
+    double missingSoftPenalty_;
+    double maxMissingSoftPenalty_;
 
     /**
      * Computes the cost penalty incurred from the given excess loads. This is
@@ -89,7 +102,9 @@ class CostEvaluator
 public:
     CostEvaluator(std::vector<double> loadPenalties,
                   double twPenalty,
-                  double distPenalty);
+                  double distPenalty,
+                  double missingSoftPenalty = 0,
+                  double maxMissingSoftPenalty = 0);
 
     /**
      * Computes the total excess load penalty for the given load and vehicle
@@ -113,6 +128,19 @@ public:
      * Computes the excess distance penalty for the given excess distance.
      */
     [[nodiscard]] inline Cost excessDistPenalty(Distance excessDistance) const;
+
+    /**
+     * Computes the total missing soft-required penalty for the given number
+     * of missing soft-required clients.
+     */
+    [[nodiscard]] inline Cost missingSoftPenalty(size_t numMissingSoft) const;
+
+    /**
+     * Computes the missing soft-required penalty at its maximum value, for
+     * the given number of missing soft-required clients.
+     */
+    [[nodiscard]] inline Cost
+    maxMissingSoftPenalty(size_t numMissingSoft) const;
 
     /**
      * Computes a smoothed objective (penalised cost) for a given solution.
@@ -236,13 +264,24 @@ Cost CostEvaluator::excessDistPenalty(Distance excessDistance) const
     return static_cast<Cost>(excessDistance.get() * distPenalty_);
 }
 
+Cost CostEvaluator::missingSoftPenalty(size_t numMissingSoft) const
+{
+    return static_cast<Cost>(numMissingSoft * missingSoftPenalty_);
+}
+
+Cost CostEvaluator::maxMissingSoftPenalty(size_t numMissingSoft) const
+{
+    return static_cast<Cost>(numMissingSoft * maxMissingSoftPenalty_);
+}
+
 template <CostEvaluatable T>
 Cost CostEvaluator::penalisedCost(T const &arg) const
 {
     if (arg.empty())
     {
         if constexpr (PrizeCostEvaluatable<T>)
-            return arg.uncollectedPrizes();
+            return arg.uncollectedPrizes()
+                   + missingSoftPenalty(arg.numMissingSoft());
         return 0;
     }
 
@@ -253,17 +292,26 @@ Cost CostEvaluator::penalisedCost(T const &arg) const
           + distPenalty(arg.excessDistance(), 0);
 
     if constexpr (PrizeCostEvaluatable<T>)
-        return cost + arg.uncollectedPrizes();
+        return cost + arg.uncollectedPrizes()
+               + missingSoftPenalty(arg.numMissingSoft());
 
     return cost;
 }
 
 template <CostEvaluatable T> Cost CostEvaluator::cost(T const &arg) const
 {
-    // Penalties are zero when the solution is feasible, so we can fall back to
-    // penalised cost in that case.
-    return arg.isFeasible() ? penalisedCost(arg)
-                            : std::numeric_limits<Cost>::max();
+    if (!arg.isFeasible())
+        return std::numeric_limits<Cost>::max();
+
+    // Violation penalties are zero when the solution is feasible, so we can
+    // fall back to penalised cost. Missing soft-required clients are always
+    // weighed at the maximum penalty here, so that the ranking of solutions
+    // does not depend on the current, adaptive penalty value.
+    if constexpr (PrizeCostEvaluatable<T>)
+        return penalisedCost(arg) - missingSoftPenalty(arg.numMissingSoft())
+               + maxMissingSoftPenalty(arg.numMissingSoft());
+
+    return penalisedCost(arg);
 }
 
 template <bool exact,
