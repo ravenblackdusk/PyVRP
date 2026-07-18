@@ -335,3 +335,40 @@ def test_group_member_evicted_from_missing_edge():
     assert_(not res.best.has_missing_edges())
     visits = [client for route in res.best.routes() for client in route]
     assert_equal(visits, [1])  # exactly one group member: the reachable one
+
+
+def test_soft_clients_beyond_capacity_are_skipped():
+    """
+    Tests that when not all SOFT clients can be feasibly served (here due to
+    a single vehicle with a tight shift), the solver serves as many as it can
+    and skips the rest, returning a feasible solution. Force-inserting all of
+    them used to wedge the search in a time-infeasible state.
+    """
+    model = Model()
+    depot = model.add_depot(0, 0, tw_early=0, tw_late=100)
+    clients = [
+        model.add_client(
+            i,
+            0,
+            service_duration=30,
+            tw_early=0,
+            tw_late=100,
+            required=ClientRequired.SOFT,
+        )
+        for i in range(5)
+    ]
+    model.add_vehicle_type(num_available=1, tw_early=0, tw_late=100)
+
+    locs = [depot, *clients]
+    for frm in locs:
+        for to in locs:
+            if frm is not to:
+                model.add_edge(frm, to, 1, 1)
+
+    # Serving a client costs 30 service + at least 1 travel, and everything
+    # must happen within 100 time units: at most 3 of 5 clients fit.
+    res = model.solve(stop=MaxIterations(50), seed=6, display=False)
+
+    assert_(res.is_feasible())
+    assert_equal(res.best.time_warp(), 0)
+    assert_equal(res.best.num_clients(), 3)

@@ -146,6 +146,13 @@ bool Solution::insert(Route::Node *U,
     Route::Node *UAfterAny = routes[0][0];  // fallback option
     Cost bestCostAny = insertCost(U, UAfterAny, data_, costEvaluator);
 
+    // SOFT clients are always inserted when eligible (the compound cost
+    // makes insertion always improving), so eligibility must guarantee the
+    // insertion does not make the route less feasible. Other clients only
+    // need to avoid missing edges; regular cost penalties handle the rest.
+    ProblemData::Client const &client = data_.location(U->client());
+    auto const isSoft = client.required == pyvrp::ClientRequired::SOFT;
+
     auto const consider = [&](Route::Node *V)
     {
         auto const cost = insertCost(U, V, data_, costEvaluator);
@@ -156,7 +163,12 @@ bool Solution::insert(Route::Node *U,
             UAfterAny = V;
         }
 
-        if (cost < bestCost && !insertAddsMissingEdges(U, V, data_))
+        if (cost >= bestCost)
+            return;
+
+        auto const eligible = isSoft ? !insertAddsViolation(U, V, data_)
+                                     : !insertAddsMissingEdges(U, V, data_);
+        if (eligible)
         {
             bestCost = cost;
             UAfter = V;

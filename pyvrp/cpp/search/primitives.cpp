@@ -113,6 +113,82 @@ bool pyvrp::search::inplaceAddsMissingEdges(Route::Node *U,
     return added > removed;
 }
 
+bool pyvrp::search::insertAddsViolation(Route::Node *U,
+                                        Route::Node *V,
+                                        ProblemData const &data)
+{
+    if (!V->route())
+        return false;
+
+    if (insertAddsMissingEdges(U, V, data))
+        return true;
+
+    auto const *route = V->route();
+    auto const proposal = Route::Proposal(route->before(V->idx()),
+                                          ClientSegment(data, U->client()),
+                                          route->after(V->idx() + 1));
+
+    auto const [distCost, excessDistance] = proposal.distance();
+    if (excessDistance > route->excessDistance())
+        return true;
+
+    auto const &excessLoad = route->excessLoad();
+    for (size_t dim = 0; dim != excessLoad.size(); ++dim)
+        if (proposal.excessLoad(dim) > excessLoad[dim])
+            return true;
+
+    auto const [durCost, timeWarp] = proposal.duration();
+    return timeWarp > route->timeWarp();
+}
+
+bool pyvrp::search::removalImprovesFeasibility(Route::Node *U,
+                                               ProblemData const &data)
+{
+    if (!U->route() || U->isDepot())
+        return false;
+
+    auto const *route = U->route();
+    auto const profile = route->profile();
+    auto const *prev = p(U);
+    auto const *next = n(U);
+
+    auto const removed = !data.edgeExists(profile, prev->client(), U->client())
+                         + !data.edgeExists(profile, U->client(), next->client());
+    auto const added = !data.edgeExists(profile, prev->client(), next->client());
+
+    if (added > removed)  // removal may never increase missing-edge use
+        return false;
+
+    auto const proposal = Route::Proposal(route->before(U->idx() - 1),
+                                          route->after(U->idx() + 1));
+
+    auto const [distCost, excessDistance] = proposal.distance();
+    if (excessDistance > route->excessDistance())
+        return false;
+
+    auto const &excessLoad = route->excessLoad();
+    for (size_t dim = 0; dim != excessLoad.size(); ++dim)
+        if (proposal.excessLoad(dim) > excessLoad[dim])
+            return false;
+
+    auto const [durCost, timeWarp] = proposal.duration();
+    if (timeWarp > route->timeWarp())
+        return false;
+
+    if (removed > added)  // strictly fewer missing edges
+        return true;
+
+    if (excessDistance < route->excessDistance()
+        || timeWarp < route->timeWarp())
+        return true;
+
+    for (size_t dim = 0; dim != excessLoad.size(); ++dim)
+        if (proposal.excessLoad(dim) < excessLoad[dim])
+            return true;
+
+    return false;
+}
+
 pyvrp::Cost pyvrp::search::removeCost(Route::Node *U,
                                       ProblemData const &data,
                                       CostEvaluator const &costEvaluator)

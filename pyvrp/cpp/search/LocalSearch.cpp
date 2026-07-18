@@ -302,31 +302,21 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
         update(route, route);
     }
 
-    // Evict a SOFT client whose removal strictly decreases the number of
-    // missing edges the solution uses, for example after a random initial
-    // solution or a perturbation. The gated (re)insertion below then finds a
-    // position that does not add missing edges, or leaves the client out.
-    // Requiring a strict decrease means evictions cannot cycle: the number
-    // of missing edges in use is bounded from below.
-    if (auto *route = U->route();
-        route && uData.required == pyvrp::ClientRequired::SOFT)
+    // Evict a SOFT client whose removal strictly improves its route's
+    // feasibility (fewer missing edges, less time warp, or less excess load
+    // or distance), for example after a random initial solution, a
+    // perturbation, or when more SOFT clients were inserted than can be
+    // feasibly served. The gated (re)insertion below then finds a position
+    // that adds no violation, or leaves the client out. Insertion never
+    // makes a route less feasible and eviction requires a strict
+    // improvement, so this cannot cycle.
+    if (U->route() && uData.required == pyvrp::ClientRequired::SOFT
+        && removalImprovesFeasibility(U, data))
     {
-        auto const profile = route->profile();
-        auto const *prev = p(U);
-        auto const *next = n(U);
-
-        auto const removed
-            = !data.edgeExists(profile, prev->client(), U->client())
-              + !data.edgeExists(profile, U->client(), next->client());
-        auto const added
-            = !data.edgeExists(profile, prev->client(), next->client());
-
-        if (removed > added)
-        {
-            searchSpace_.markPromising(U);
-            route->remove(U->idx());
-            update(route, route);
-        }
+        searchSpace_.markPromising(U);
+        auto *route = U->route();
+        route->remove(U->idx());
+        update(route, route);
     }
 
     if (U->route())

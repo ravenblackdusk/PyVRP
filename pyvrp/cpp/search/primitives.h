@@ -83,6 +83,50 @@ bool inplaceAddsMissingEdges(Route::Node *U,
                              ProblemData const &data);
 
 /**
+ * Determines whether inserting U after V would make V's route less feasible:
+ * either by increasing the number of missing edges it uses, or by increasing
+ * its time warp, excess load, or excess distance.
+ *
+ * Parameters
+ * ----------
+ * U
+ *     Node to insert.
+ * V
+ *     Node to insert U after. Must be in a route.
+ * data
+ *     Problem data instance.
+ *
+ * Returns
+ * -------
+ * bool
+ *     True if inserting U after V increases any infeasibility of V's route,
+ *     False otherwise.
+ */
+bool insertAddsViolation(Route::Node *U,
+                         Route::Node *V,
+                         ProblemData const &data);
+
+/**
+ * Determines whether removing U from its current route makes that route
+ * strictly more feasible: no missing-edge use or constraint violation may
+ * increase, and at least one must strictly decrease.
+ *
+ * Parameters
+ * ----------
+ * U
+ *     Node to remove. Must be in a route.
+ * data
+ *     Problem data instance.
+ *
+ * Returns
+ * -------
+ * bool
+ *     True if removing U strictly improves the feasibility of its route,
+ *     False otherwise.
+ */
+bool removalImprovesFeasibility(Route::Node *U, ProblemData const &data);
+
+/**
  * Evaluates the delta cost of inserting U in the place of V. The evaluation is
  * exact.
  *
