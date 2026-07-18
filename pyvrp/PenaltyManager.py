@@ -7,6 +7,7 @@ from warnings import warn
 import numpy as np
 
 from pyvrp._pyvrp import CostEvaluator, ProblemData, Solution
+from pyvrp.constants import MAX_VALUE
 from pyvrp.exceptions import PenaltyBoundWarning
 
 
@@ -246,10 +247,17 @@ class PenaltyManager:
         # the average detour of serving a client: two average edges. Its
         # maximum weight must exceed any monetary amount a solution could
         # save by dropping a single client, which is bounded by the worst
-        # possible detour plus the largest fixed vehicle cost.
-        init_soft = 2 * avg_cost
+        # possible detour plus the largest fixed vehicle cost. Both are
+        # derived from real edges only: missing edges carry MAX_VALUE-sized
+        # placeholder values that would inflate these weights so much that
+        # dropping an unservable soft client could never pay off.
+        real_edges = edge_costs[edge_costs < MAX_VALUE]
+        avg_real = real_edges.mean() if real_edges.size else avg_cost
+        max_real = real_edges.max() if real_edges.size else edge_costs.max()
+
+        init_soft = 2 * avg_real
         max_fixed = max((v.fixed_cost for v in data.vehicle_types()), default=0)
-        max_soft = 2 * (edge_costs.max() + 1) + max_fixed
+        max_soft = 2 * (max_real + 1) + max_fixed
 
         return cls(
             (init_load.tolist(), init_tw, init_dist, init_soft),
