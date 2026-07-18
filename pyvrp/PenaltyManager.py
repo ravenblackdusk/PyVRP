@@ -56,6 +56,14 @@ class PenaltyParams:
         .. warning::
            Setting a (too) large maximum penalty value may cause integer
            overflow in PyVRP's native extensions.
+    max_missing_soft_penalty
+        Maximum value of the missing soft-required client penalty. This value
+        determines how strongly the solver insists on serving soft-required
+        clients: at this value, a client is only dropped when keeping it
+        costs more than this in penalised terms (for example, time warp at
+        the maximum time warp penalty). When not provided, a value is derived
+        from the problem data as an upper bound on the money a solution could
+        save by dropping one client.
 
     Attributes
     ----------
@@ -88,6 +96,7 @@ class PenaltyParams:
     feas_tolerance: float = 0.05
     min_penalty: float = 0.1
     max_penalty: float = 100_000.0
+    max_missing_soft_penalty: float | None = None
 
     def __post_init__(self):
         if not self.solutions_between_updates >= 1:
@@ -110,6 +119,14 @@ class PenaltyParams:
 
         if self.max_penalty < self.min_penalty:
             raise ValueError("Expected max_penalty >= min_penalty.")
+
+        if (
+            self.max_missing_soft_penalty is not None
+            and self.max_missing_soft_penalty < self.min_penalty
+        ):
+            raise ValueError(
+                "Expected max_missing_soft_penalty >= min_penalty."
+            )
 
 
 class PenaltyManager:
@@ -257,10 +274,12 @@ class PenaltyManager:
 
         init_soft = 2 * avg_real
         max_fixed = max((v.fixed_cost for v in data.vehicle_types()), default=0)
-        max_soft = 2 * (max_real + 1) + max_fixed
+        max_soft = params.max_missing_soft_penalty
+        if max_soft is None:
+            max_soft = 2 * (max_real + 1) + max_fixed
 
         return cls(
-            (init_load.tolist(), init_tw, init_dist, init_soft),
+            (init_load.tolist(), init_tw, init_dist, min(init_soft, max_soft)),
             params,
             max_missing_soft_penalty=max_soft,
         )
