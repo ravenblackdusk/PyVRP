@@ -302,3 +302,36 @@ def test_unreachable_hard_client_makes_run_infeasible():
 
     assert_(not res.is_feasible())
     assert_(res.best.has_missing_edges())
+
+
+def test_group_member_evicted_from_missing_edge():
+    """
+    Tests that a client-group member stuck on a missing edge (here via the
+    initial solution) is evicted, so the solution becomes feasible with the
+    reachable group member instead.
+    """
+    model = Model()
+    depot = model.add_depot(0, 0)
+    group = model.add_client_group()
+    good = model.add_client(1, 0, required=ClientRequired.NO, group=group)
+    model.add_client(50, 50, required=ClientRequired.NO, group=group)
+    model.add_vehicle_type(num_available=2)
+
+    model.add_edge(depot, good, 1, 1)
+    model.add_edge(good, depot, 1, 1)
+
+    data = model.data()
+    bad_start = Solution(data, [[2]])  # unreachable member, on missing edges
+    assert_(bad_start.has_missing_edges())
+
+    res = model.solve(
+        stop=MaxIterations(20),
+        seed=5,
+        display=False,
+        initial_solution=bad_start,
+    )
+
+    assert_(res.is_feasible())
+    assert_(not res.best.has_missing_edges())
+    visits = [client for route in res.best.routes() for client in route]
+    assert_equal(visits, [1])  # exactly one group member: the reachable one

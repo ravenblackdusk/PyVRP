@@ -401,6 +401,37 @@ void LocalSearch::applyGroupMoves(Route::Node *U,
     auto const &group = data.group(*uData.group);
     assert(group.mutuallyExclusive);
 
+    // Evict group members whose removal strictly decreases the number of
+    // missing edges the solution uses. Required groups are exempt: their
+    // member must stay in the solution, like HARD clients. As with SOFT
+    // clients, requiring a strict decrease means this cannot cycle.
+    if (group.required != pyvrp::ClientRequired::HARD)
+        for (auto const client : group)
+        {
+            auto &node = solution_.nodes[client];
+            auto *route = node.route();
+
+            if (!route)
+                continue;
+
+            auto const profile = route->profile();
+            auto const *prev = p(&node);
+            auto const *next = n(&node);
+
+            auto const removed
+                = !data.edgeExists(profile, prev->client(), node.client())
+                  + !data.edgeExists(profile, node.client(), next->client());
+            auto const added
+                = !data.edgeExists(profile, prev->client(), next->client());
+
+            if (removed > added)
+            {
+                searchSpace_.markPromising(&node);
+                route->remove(node.idx());
+                update(route, route);
+            }
+        }
+
     std::vector<size_t> inSol;
     auto const pred
         = [&](auto client) { return solution_.nodes[client].route(); };
