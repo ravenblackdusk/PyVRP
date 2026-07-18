@@ -311,8 +311,9 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
     // makes a route less feasible and eviction requires a strict
     // improvement, so this cannot cycle.
     if (U->route() && uData.required == pyvrp::ClientRequired::SOFT
-        && removalImprovesFeasibility(U, data))
+        && !evicted_[U->client()] && removalImprovesFeasibility(U, data))
     {
+        evicted_[U->client()] = true;
         searchSpace_.markPromising(U);
         auto *route = U->route();
         route->remove(U->idx());
@@ -414,8 +415,9 @@ void LocalSearch::applyGroupMoves(Route::Node *U,
             auto const added
                 = !data.edgeExists(profile, prev->client(), next->client());
 
-            if (removed > added)
+            if (removed > added && !evicted_[node.client()])
             {
+                evicted_[node.client()] = true;
                 searchSpace_.markPromising(&node);
                 route->remove(node.idx());
                 update(route, route);
@@ -537,6 +539,7 @@ void LocalSearch::loadSolution(pyvrp::Solution const &solution)
     std::fill(lastTestedNodes.begin(), lastTestedNodes.end(), -1);
     std::fill(lastTestedRoutes.begin(), lastTestedRoutes.end(), -1);
     std::fill(lastUpdated.begin(), lastUpdated.end(), 0);
+    evicted_.assign(data.numLocations(), false);
     searchSpace_.markAllPromising();
     numUpdates_ = 0;
 

@@ -41,6 +41,11 @@ class LocalSearch
     size_t numUpdates_ = 0;         // modification counter
     bool searchCompleted_ = false;  // No further improving move found?
 
+    // Tracks clients evicted for feasibility this LS invocation. Each client
+    // may be evicted at most once per invocation: evictions do not improve
+    // the penalised cost, so bounding them guarantees the search terminates.
+    std::vector<bool> evicted_;
+
     // Load an initial solution that we will attempt to improve.
     void loadSolution(pyvrp::Solution const &solution);
 
