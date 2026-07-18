@@ -874,6 +874,9 @@ PYBIND11_MODULE(_pyvrp, m)
         .def("num_clients",
              &Solution::numClients,
              DOC(pyvrp, Solution, numClients))
+        .def("num_missing_soft",
+             &Solution::numMissingSoft,
+             DOC(pyvrp, Solution, numMissingSoft))
         .def("num_missing_clients",
              &Solution::numMissingClients,
              DOC(pyvrp, Solution, numMissingClients))
@@ -939,6 +942,7 @@ PYBIND11_MODULE(_pyvrp, m)
                 // Returns a tuple that completely encodes the solution's state.
                 return py::make_tuple(sol.numClients(),
                                       sol.numMissingClients(),
+                                      sol.numMissingSoft(),
                                       sol.distance(),
                                       sol.distanceCost(),
                                       sol.duration(),
@@ -962,20 +966,21 @@ PYBIND11_MODULE(_pyvrp, m)
                 Solution sol(
                     t[0].cast<size_t>(),                    // num clients
                     t[1].cast<size_t>(),                    // num missing
-                    t[2].cast<pyvrp::Distance>(),           // distance
-                    t[3].cast<pyvrp::Cost>(),               // distance cost
-                    t[4].cast<pyvrp::Duration>(),           // duration
-                    t[5].cast<pyvrp::Duration>(),           // overtime
-                    t[6].cast<pyvrp::Cost>(),               // duration cost
-                    t[7].cast<pyvrp::Distance>(),           // excess distance
-                    t[8].cast<std::vector<pyvrp::Load>>(),  // excess load
-                    t[9].cast<pyvrp::Cost>(),               // fixed veh cost
-                    t[10].cast<pyvrp::Cost>(),              // prizes
-                    t[11].cast<pyvrp::Cost>(),              // uncollected
-                    t[12].cast<pyvrp::Duration>(),          // time warp
-                    t[13].cast<bool>(),                     // is group feasible
-                    t[14].cast<Routes>(),                   // routes
-                    t[15].cast<Neighbours>());              // neighbours
+                    t[2].cast<size_t>(),                    // num missing soft
+                    t[3].cast<pyvrp::Distance>(),           // distance
+                    t[4].cast<pyvrp::Cost>(),               // distance cost
+                    t[5].cast<pyvrp::Duration>(),           // duration
+                    t[6].cast<pyvrp::Duration>(),           // overtime
+                    t[7].cast<pyvrp::Cost>(),               // duration cost
+                    t[8].cast<pyvrp::Distance>(),           // excess distance
+                    t[9].cast<std::vector<pyvrp::Load>>(),  // excess load
+                    t[10].cast<pyvrp::Cost>(),              // fixed veh cost
+                    t[11].cast<pyvrp::Cost>(),              // prizes
+                    t[12].cast<pyvrp::Cost>(),              // uncollected
+                    t[13].cast<pyvrp::Duration>(),          // time warp
+                    t[14].cast<bool>(),                     // is group feasible
+                    t[15].cast<Routes>(),                   // routes
+                    t[16].cast<Neighbours>());              // neighbours
 
                 return sol;
             }))

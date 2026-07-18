@@ -64,6 +64,8 @@ size_t Solution::numClients() const { return numClients_; }
 
 size_t Solution::numMissingClients() const { return numMissingClients_; }
 
+size_t Solution::numMissingSoft() const { return numMissingSoft_; }
+
 Routes const &Solution::routes() const { return routes_; }
 
 Neighbours const &Solution::neighbours() const { return neighbours_; }
@@ -262,7 +264,10 @@ Solution::Solution(ProblemData const &data, std::vector<Route> routes)
         if (!isVisited[client])  // we need to check if the client visit
         {                        // is required if this is true
             ProblemData::Client const &clientData = data.location(client);
-            numMissingClients_ += clientData.required == pyvrp::ClientRequired::HARD;
+            numMissingClients_
+                += clientData.required == pyvrp::ClientRequired::HARD;
+            numMissingSoft_
+                += clientData.required == pyvrp::ClientRequired::SOFT;
         }
 
     for (auto const &group : data.groups())
@@ -292,6 +297,7 @@ Solution::Solution(ProblemData const &data, std::vector<Route> routes)
 
 Solution::Solution(size_t numClients,
                    size_t numMissingClients,
+                   size_t numMissingSoft,
                    Distance distance,
                    Cost distanceCost,
                    Duration duration,
@@ -308,6 +314,7 @@ Solution::Solution(size_t numClients,
                    Neighbours neighbours)
     : numClients_(numClients),
       numMissingClients_(numMissingClients),
+      numMissingSoft_(numMissingSoft),
       distance_(distance),
       distanceCost_(distanceCost),
       duration_(duration),
