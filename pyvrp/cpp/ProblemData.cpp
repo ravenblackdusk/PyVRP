@@ -74,9 +74,7 @@ ProblemData::Client::Client(Coordinate x,
       delivery(pad(delivery, pickup)),
       pickup(pad(pickup, delivery)),
       releaseTime(releaseTime),
-      // For SOFT clients, embed a soft-required component in the prize
-      // so that delta cost calculations automatically prefer visiting them.
-      prize(required == ClientRequired::SOFT ? Cost(1, prize.get()) : prize),
+      prize(prize),
       required(required),
       group(group),
       name(duplicate(name.data()))
@@ -104,7 +102,7 @@ ProblemData::Client::Client(Coordinate x,
     if (releaseTime < 0)
         throw std::invalid_argument("release_time must be >= 0.");
 
-    if (prize.get() < 0)
+    if (prize < 0)
         throw std::invalid_argument("prize must be >= 0.");
 }
 

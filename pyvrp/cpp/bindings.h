@@ -104,40 +104,6 @@ struct type_caster<pyvrp::Measure<T, V>>
     }
 };
 
-// Caster for standalone Cost type. Python sees just the monetary component
-// as an int. Construction from Python int creates Cost{0, value}.
-template <> struct type_caster<pyvrp::Cost>
-{
-    PYBIND11_TYPE_CASTER(pyvrp::Cost, _("int"));
-
-    bool load(pybind11::handle src, bool convert)  // Python -> C++
-    {
-        if (!convert && !PyLong_Check(src.ptr()))
-            return false;
-
-        PyObject *tmp = PyNumber_Long(src.ptr());
-        if (!tmp)
-            return false;
-
-        auto const raw = PyLong_AsLongLong(tmp);
-        Py_DECREF(tmp);
-
-        if (raw == -1 && PyErr_Occurred())
-            throw pybind11::error_already_set();
-
-        value = pyvrp::Cost(raw);
-        return !PyErr_Occurred();
-    }
-
-    static pybind11::handle
-    cast(pyvrp::Cost const &src,  // C++ -> Python
-         [[maybe_unused]] pybind11::return_value_policy policy,
-         [[maybe_unused]] pybind11::handle parent)
-    {
-        return PyLong_FromLongLong(src.get());
-    }
-};
-
 // Caster for floating point measures.
 template <pyvrp::MeasureType T, std::floating_point V>
 struct type_caster<pyvrp::Measure<T, V>>

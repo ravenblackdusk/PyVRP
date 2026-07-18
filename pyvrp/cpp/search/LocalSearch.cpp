@@ -290,8 +290,8 @@ void LocalSearch::applyOptionalClientMoves(Route::Node *U,
 
     // Required clients are not optional, and have just been inserted above
     // if not already in the solution. Groups have their own operator and are
-    // not processed here. SOFT clients follow the optional path below;
-    // the compound Cost type ensures they are always preferred.
+    // not processed here. SOFT clients follow the optional path below; the
+    // missing soft-required penalty makes visiting them attractive.
     if (uData.required == pyvrp::ClientRequired::HARD || uData.group)
         return;
 
