@@ -85,7 +85,7 @@ def test_iteration(ok_small, caplog):
     best = Solution(ok_small, [[1, 2], [3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
 
-    stats = Statistics()
+    stats = Statistics(ok_small)
     stats.collect(cand, curr, best, cost_eval)
 
     printer = ProgressPrinter(should_print=True, display_interval=0.0)
@@ -111,7 +111,7 @@ def test_should_print_false_no_output(ok_small, caplog):
     sol = Solution(ok_small, [[1, 2, 3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
 
-    stats = Statistics()
+    stats = Statistics(ok_small)
     stats.collect(sol, sol, sol, cost_eval)
 
     # Set up the progress printer, call all its methods, and then check that

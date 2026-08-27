@@ -126,7 +126,7 @@ class IteratedLocalSearch:
         print_progress.start(self._data)
 
         history: RingBuffer[Solution] = RingBuffer(self._params.history_length)
-        stats = Statistics(collect_stats=collect_stats)
+        stats = Statistics(self._data, collect_stats=collect_stats)
 
         start = time.perf_counter()
         iters = iters_no_improvement = 0

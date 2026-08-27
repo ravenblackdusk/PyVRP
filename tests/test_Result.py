@@ -54,7 +54,7 @@ def test_num_iterations(ok_small, num_iterations: int):
     Tests access to the ``num_iterations`` property.
     """
     rng = RandomNumberGenerator(seed=42)
-    stats = Statistics()
+    stats = Statistics(ok_small)
     best = Solution.make_random(ok_small, rng)
     res = Result(best, stats, num_iterations, 0.0)
     assert_equal(res.num_iterations, num_iterations)
@@ -115,7 +115,7 @@ def test_result_can_be_pickled(ok_small, num_iterations: int):
     """
     best = Solution(ok_small, [[1, 2], [3], [4]])
     cost_eval = CostEvaluator([20], 6, 6)
-    stats = Statistics()
+    stats = Statistics(ok_small)
 
     for _ in range(num_iterations):
         stats.collect(best, best, best, cost_eval)

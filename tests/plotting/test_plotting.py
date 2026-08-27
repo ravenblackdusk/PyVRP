@@ -90,7 +90,7 @@ def test_plot_result(ok_small):
     ]
     cost_eval = CostEvaluator([20], 6, 6)
     bks = min(sols, key=cost_eval.penalised_cost)
-    stats = Statistics()
+    stats = Statistics(ok_small)
     num_iters = 10
 
     for idx in range(num_iters):

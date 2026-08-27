@@ -4,7 +4,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import Iterator, Literal, get_origin
 
-from pyvrp._pyvrp import CostEvaluator, Solution
+from pyvrp._pyvrp import CostEvaluator, ProblemData, Solution
 
 
 @dataclass(slots=True)
@@ -24,6 +24,8 @@ class _Datum:
     best_cost: int
     best_feas: bool
     best_route_durations: tuple[int, ...]
+    best_num_missing: int
+    best_distance: int
 
 
 class Statistics:
@@ -32,6 +34,11 @@ class Statistics:
 
     Parameters
     ----------
+    data
+        Problem data instance, used to work out how many clients a solution
+        leaves unassigned. Only needed when statistics are collected via
+        :meth:`collect`; not needed when reading statistics back from a CSV
+        file with :meth:`from_csv`.
     collect_stats
         Whether to collect statistics at all. This can be turned off to avoid
         excessive memory use on long runs.
@@ -41,13 +48,22 @@ class Statistics:
     num_iterations: int
     data: list[_Datum]
 
-    def __init__(self, collect_stats: bool = True):
+    def __init__(
+        self, data: ProblemData | None = None, collect_stats: bool = True
+    ):
         self.runtimes = []
         self.num_iterations = 0
         self.data = []
 
         self._clock = perf_counter()
         self._collect_stats = collect_stats
+
+        if data is not None:
+            num_grouped = sum(len(group.clients) for group in data.groups())
+            num_ungrouped = data.num_clients - num_grouped
+            self._total_stops = num_ungrouped + len(data.groups())
+        else:
+            self._total_stops = None
 
     def __eq__(self, other: object) -> bool:
         return (
@@ -107,6 +123,8 @@ class Statistics:
             cost_evaluator.penalised_cost(best),
             best.is_feasible(),
             tuple(r.duration() for r in best.routes()),
+            self._total_stops - best.num_clients(),
+            best.distance(),
         )
         self.data.append(datum)
 

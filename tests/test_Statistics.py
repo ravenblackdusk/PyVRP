@@ -12,7 +12,7 @@ def test_csv_serialises_correctly(ok_small, tmp_path):
     sol = Solution(ok_small, [[1, 2], [3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
 
-    collected_stats = Statistics()
+    collected_stats = Statistics(ok_small)
     for idx in range(10):  # populate the statistics object
         collected_stats.collect(sol, sol, sol, cost_eval)
 
@@ -36,7 +36,7 @@ def test_collect_a_data_point_per_iteration(ok_small, num_iterations: int):
     Tests that the statistics object collects solution statistics every time
     ``collect`` is called.
     """
-    stats = Statistics()
+    stats = Statistics(ok_small)
     assert_(stats.is_collecting())
 
     sol = Solution(ok_small, [[1, 2], [3, 4]])
@@ -58,7 +58,7 @@ def test_data_point_matches_collect(ok_small):
     best = Solution(ok_small, [[1, 2], [3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
 
-    stats = Statistics()
+    stats = Statistics(ok_small)
     stats.collect(curr, cand, best, cost_eval)
 
     datum = stats.data[0]
@@ -79,6 +79,34 @@ def test_data_point_matches_collect(ok_small):
         datum.best_route_durations,
         tuple(r.duration() for r in best.routes()),
     )
+    assert_equal(datum.best_num_missing, 0)
+    assert_equal(datum.best_distance, best.distance())
+
+
+def test_best_num_missing_counts_a_group_once_when_any_member_is_visited(
+    ok_small_mutually_exclusive_groups,
+):
+    """
+    Tests that a client group counts as served, contributing nothing to
+    best_num_missing, as soon as any one of its members is visited - even
+    though the other members remain unvisited.
+    """
+    data = ok_small_mutually_exclusive_groups
+    cost_eval = CostEvaluator([20], 6, 6)
+
+    # Clients 1, 2, 3 are in the group; client 4 is not. Visiting just one
+    # group member (1) should satisfy the whole group.
+    sol = Solution(data, [[1, 4]])
+    stats = Statistics(data)
+    stats.collect(sol, sol, sol, cost_eval)
+    assert_equal(stats.data[0].best_num_missing, 0)
+
+    # Now nobody in the group is visited, so the group as a whole is missing
+    # - but that is one missing stop, not three.
+    sol = Solution(data, [[4]])
+    stats = Statistics(data)
+    stats.collect(sol, sol, sol, cost_eval)
+    assert_equal(stats.data[0].best_num_missing, 1)
 
 
 @pytest.mark.parametrize("num_iterations", [0, 1, 10])
@@ -89,7 +117,7 @@ def test_eq(ok_small, num_iterations: int):
     sol = Solution(ok_small, [[1, 2], [3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
 
-    stats = Statistics()
+    stats = Statistics(ok_small)
     for _ in range(num_iterations):  # populate the statistics object
         stats.collect(sol, sol, sol, cost_eval)
 
@@ -97,7 +125,7 @@ def test_eq(ok_small, num_iterations: int):
     assert_(stats != "test")
 
     if num_iterations > 0:
-        assert_(stats != Statistics())
+        assert_(stats != Statistics(ok_small))
 
 
 def test_more_eq(ok_small):
@@ -107,8 +135,8 @@ def test_more_eq(ok_small):
     sol = Solution(ok_small, [[1, 2], [3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
 
-    stats1 = Statistics()
-    stats2 = Statistics()
+    stats1 = Statistics(ok_small)
+    stats2 = Statistics(ok_small)
 
     assert_equal(stats1, stats2)
     assert_(stats1 != "str")
@@ -132,7 +160,7 @@ def test_iterating_over_statistics_returns_data(ok_small):
     """
     Tests that iterating over a Statistics object yields the correct data.
     """
-    stats = Statistics()
+    stats = Statistics(ok_small)
     assert_equal(list(stats), [])
 
     sol = Solution(ok_small, [[1, 2], [3, 4]])
@@ -152,6 +180,8 @@ def test_iterating_over_statistics_returns_data(ok_small):
         assert_equal(datum.best_cost, cost)
         assert_equal(datum.current_route_durations, route_durations)
         assert_equal(datum.best_route_durations, route_durations)
+        assert_equal(datum.best_num_missing, 0)
+        assert_equal(datum.best_distance, sol.distance())
         assert_(datum.current_feas)
         assert_(datum.candidate_feas)
         assert_(datum.best_feas)
@@ -165,10 +195,10 @@ def test_not_collecting(ok_small):
     sol = Solution(ok_small, [[1, 2], [3, 4]])
     cost_eval = CostEvaluator([20], 6, 6)
 
-    stats = Statistics(collect_stats=False)
+    stats = Statistics(ok_small, collect_stats=False)
     assert_(not stats.is_collecting())
 
     stats.collect(sol, sol, sol, cost_eval)
     stats.collect(sol, sol, sol, cost_eval)
 
-    assert_equal(stats, Statistics(collect_stats=False))
+    assert_equal(stats, Statistics(ok_small, collect_stats=False))
